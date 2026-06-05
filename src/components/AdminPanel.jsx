@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { checkPin, savePin, hasPinStored } from '../utils/pin'
 
-export default function AdminPanel({ stormglassKey, supabaseUrl, supabaseKey, onSave, onClose, sessionUnlocked, onSessionUnlock }) {
+export default function AdminPanel({ stormglassKey, supabaseUrl, supabaseKey, onSave, onClose, sessionUnlocked, onSessionUnlock, tidesRefresh, callsRemaining, tidesLoading, tidesError }) {
   const [pinInput,   setPinInput]   = useState('')
   const [pinError,   setPinError]   = useState('')
   const [view,       setView]       = useState(sessionUnlocked ? 'panel' : (hasPinStored() ? 'lock' : 'panel'))
@@ -16,6 +16,25 @@ export default function AdminPanel({ stormglassKey, supabaseUrl, supabaseKey, on
   const [newPin,      setNewPin]      = useState('')
   const [confirmPin,  setConfirmPin]  = useState('')
   const [pinMsg,      setPinMsg]      = useState('')
+
+  // Refresh marées
+  const [refreshing, setRefreshing] = useState(false)
+  const [refreshMsg, setRefreshMsg] = useState('')
+
+  const handleRefreshTides = async () => {
+    if (!tidesRefresh) return
+    setRefreshing(true)
+    setRefreshMsg('')
+    try {
+      await tidesRefresh(true) // force = true pour ignorer le cache
+      setRefreshMsg('✓ Marées mises à jour!')
+      setTimeout(() => setRefreshMsg(''), 3000)
+    } catch (e) {
+      setRefreshMsg(`✗ Erreur: ${e.message || 'Refresh échoué'}`)
+    } finally {
+      setRefreshing(false)
+    }
+  }
 
 
   const unlock = () => {
@@ -80,6 +99,41 @@ export default function AdminPanel({ stormglassKey, supabaseUrl, supabaseKey, on
             <input type="password" value={sgKey} onChange={e => setSgKey(e.target.value)} placeholder="Clé Stormglass" />
           </label>
           <p className="hint" style={{ marginTop: 8 }}>Gratuit: 10 appels/jour | Refresh auto dimanche | Données en cache local</p>
+
+          <div style={{ marginTop: 16, paddingTop: 16, borderTop: '1px solid #ccc' }}>
+            <h4 style={{ marginBottom: 12 }}>Quota API aujourd'hui</h4>
+            <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+              <div style={{ fontSize: 24, fontWeight: 'bold', color: callsRemaining === 0 ? '#d32f2f' : '#2e7d32' }}>
+                {callsRemaining || 0}/10
+              </div>
+              <span style={{ fontSize: 12, color: '#666' }}>
+                {callsRemaining === 0 ? '❌ Quota épuisé' : `✓ ${callsRemaining} appel${callsRemaining !== 1 ? 's' : ''} restant${callsRemaining !== 1 ? 's' : ''}`}
+              </span>
+            </div>
+
+            <button
+              className="btn-save"
+              onClick={handleRefreshTides}
+              disabled={refreshing || !tidesRefresh}
+              style={{
+                marginTop: 12,
+                opacity: refreshing || !tidesRefresh ? 0.6 : 1,
+                cursor: refreshing || !tidesRefresh ? 'not-allowed' : 'pointer',
+              }}
+            >
+              {refreshing ? '⟳ Rafraîchissement…' : '↻ Rafraîchir maintenant'}
+            </button>
+
+            {refreshMsg && (
+              <p style={{
+                marginTop: 8,
+                fontSize: 12,
+                color: refreshMsg.includes('✓') ? '#2e7d32' : '#d32f2f'
+              }}>
+                {refreshMsg}
+              </p>
+            )}
+          </div>
         </section>
 
         <section style={{ marginTop: 16 }}>

@@ -74,14 +74,11 @@ export default function App() {
         )}
 
         {showAdmin && (
-          <AdminPanel
-            stormglassKey={apiKey}
-            supabaseUrl={sbUrl}
-            supabaseKey={sbKey}
-            sessionUnlocked={adminUnlocked}
-            onSessionUnlock={() => setAdminUnlocked(true)}
-            onSave={saveAdmin}
-            onClose={() => setShowAdmin(false)}
+          <TidesAdminWrapper
+            apiKey={apiKey} location={location}
+            stormglassKey={apiKey} supabaseUrl={sbUrl} supabaseKey={sbKey}
+            sessionUnlocked={adminUnlocked} onSessionUnlock={() => setAdminUnlocked(true)}
+            onSave={saveAdmin} onClose={() => setShowAdmin(false)}
           />
         )}
       </div>
@@ -110,5 +107,25 @@ function TidesWrapper({ location, apiKey, weather }) {
         onDateSelect={setSelectedDate}
       />
     </>
+  )
+}
+
+function TidesAdminWrapper({ apiKey, location, stormglassKey, supabaseUrl, supabaseKey, sessionUnlocked, onSessionUnlock, onSave, onClose }) {
+  const tides = useTides(location, apiKey)
+
+  return (
+    <AdminPanel
+      stormglassKey={stormglassKey}
+      supabaseUrl={supabaseUrl}
+      supabaseKey={supabaseKey}
+      sessionUnlocked={sessionUnlocked}
+      onSessionUnlock={onSessionUnlock}
+      onSave={onSave}
+      onClose={onClose}
+      tidesRefresh={tides.refresh}
+      callsRemaining={tides.callsRemaining}
+      tidesLoading={tides.loading}
+      tidesError={tides.error}
+    />
   )
 }
