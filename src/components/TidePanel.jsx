@@ -46,12 +46,18 @@ export default function TidePanel({ data, loading, error, hasKey, selectedDate }
     </div>
   )
 
-  if (!data) return (
+  if (!data && !error) return (
     <div className="panel panel-wide">
       <div className="panel-label">🌊 Marées</div>
-      <div className="tide-no-data">
-        <p>Chargement des données…</p>
-      </div>
+      <div className="tide-loading"><span className="spinner" /> Chargement…</div>
+    </div>
+  )
+
+  if (!data && error) return (
+    <div className="panel panel-wide">
+      <div className="panel-label">🌊 Marées</div>
+      <div className="tide-error">⚠️ {errorHint(error)}</div>
+      <p className="hint" style={{ marginTop: 12, textAlign: 'center' }}>Les marées seront mises à jour dimanche. Données: cache local</p>
     </div>
   )
 
