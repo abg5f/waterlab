@@ -97,7 +97,7 @@ function TidesWrapper({ location, apiKey, weather }) {
     <>
       <ScoreBanner tides={tides} weather={weather} />
       <div className="panels-row">
-        <MoonPanel location={location} weather={weather} />
+        <MoonPanel location={location} weather={weather} selectedDate={selectedDate} />
         <TidePanel
           data={tides.data} loading={tides.loading} error={tides.error}
           fetchedAt={tides.fetchedAt} source={tides.source}
