@@ -1,7 +1,7 @@
 import { useState, useMemo } from 'react'
 import StarRating from './StarRating'
 import { getMoonData } from '../utils/moonPhase'
-import { getFishingScore } from '../utils/scores'
+import { getFishingScore, getCoeffThresholds } from '../utils/scores'
 import { calculateCoefficients, getCoefficientForDate, getTidesForDate, formatTime, coeffLabel, coeffClass } from '../utils/tidesApi'
 import { getDailyForDate } from '../utils/weatherApi'
 import {
@@ -246,7 +246,8 @@ export default function FishingCalendar({ weather, tides, location, onDateSelect
   const last  = new Date(year, month + 1, 0).getDate()
   const pad   = (new Date(year, month, 1).getDay() + 6) % 7
 
-  const allCoeffs = useMemo(() => (tides ? calculateCoefficients(tides) : []), [tides])
+  const allCoeffs     = useMemo(() => (tides ? calculateCoefficients(tides) : []), [tides])
+  const coeffThresholds = useMemo(() => getCoeffThresholds(allCoeffs), [allCoeffs])
 
   const getConditions = (dateOrDay) => {
     const date = dateOrDay instanceof Date ? dateOrDay : new Date(year, month, dateOrDay)
@@ -266,7 +267,7 @@ export default function FishingCalendar({ weather, tides, location, onDateSelect
       tideCoeff:     coeff,
       coeffCategory: getCoeffCategory(coeff),
       pressureTrend: getPressureTrend(trend),
-      fishingScore:  getFishingScore(date, trend, dayTides, coeff),
+      fishingScore:  getFishingScore(date, trend, coeff, coeffThresholds),
       tides:         dayTides,
     }
   }
