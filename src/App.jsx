@@ -8,6 +8,7 @@ import TidePanel from './components/TidePanel'
 import MoonPanel from './components/MoonPanel'
 import SolunarPanel from './components/SolunarPanel'
 import FishingCalendar from './components/FishingCalendar'
+import HowItWorks from './components/HowItWorks'
 import { useTides } from './hooks/useTides'
 import { useWeather } from './hooks/useWeather'
 
@@ -78,7 +79,8 @@ function AppShell({
 }) {
   const weather = useWeather(location)
   const tides   = useTides(location, apiKey)
-  const [selectedDate, setSelectedDate] = useState(null) // null = aujourd'hui
+  const [selectedDate,   setSelectedDate]   = useState(null)  // null = aujourd'hui
+  const [showHowItWorks, setShowHowItWorks] = useState(false)
 
   return (
     <div className="app">
@@ -86,6 +88,7 @@ function AppShell({
         location={location}
         onLocationEdit={() => setShowLocation(true)}
         onAdminAccess={() => setShowAdmin(true)}
+        onHowItWorks={() => setShowHowItWorks(true)}
         supabaseConnected={supabaseConnected}
         adminUnlocked={adminUnlocked}
       />
@@ -127,6 +130,18 @@ function AppShell({
           tidesRefresh={tides.refresh}
           callsRemaining={tides.callsRemaining}
         />
+      )}
+
+      {showHowItWorks && (
+        <div className="modal-bg" onClick={() => setShowHowItWorks(false)}>
+          <div className="modal hiw-modal" onClick={e => e.stopPropagation()}>
+            <div className="modal-top">
+              <h2>💡 Comment ça marche</h2>
+              <button className="modal-close" onClick={() => setShowHowItWorks(false)}>✕</button>
+            </div>
+            <HowItWorks />
+          </div>
+        </div>
       )}
     </div>
   )

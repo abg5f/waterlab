@@ -1,6 +1,7 @@
 import { useRef } from 'react'
+import BurgerMenu from './BurgerMenu'
 
-export default function Header({ location, onLocationEdit, onAdminAccess, supabaseConnected, adminUnlocked }) {
+export default function Header({ location, onLocationEdit, onAdminAccess, onHowItWorks, supabaseConnected, adminUnlocked }) {
   const tapCount = useRef(0)
   const tapTimer = useRef(null)
 
@@ -21,14 +22,22 @@ export default function Header({ location, onLocationEdit, onAdminAccess, supaba
 
   return (
     <header className="app-header">
-      <div className="header-brand" onClick={handleLogoTap} style={{ cursor: 'default', userSelect: 'none' }}>
-        <span className="header-logo">🎣</span>
-        <div>
-          <div className="header-title">
-            WaterLab
-            {adminUnlocked && <span className="admin-dot" title="Mode admin actif" />}
+      <div className="header-left">
+        <BurgerMenu
+          items={[
+            { label: 'Paramètres', icon: '⚙️', onClick: onAdminAccess },
+            { label: 'Comment ça marche', icon: '💡', onClick: onHowItWorks },
+          ]}
+        />
+        <div className="header-brand" onClick={handleLogoTap} style={{ cursor: 'default', userSelect: 'none' }}>
+          <span className="header-logo">🎣</span>
+          <div>
+            <div className="header-title">
+              WaterLab
+              {adminUnlocked && <span className="admin-dot" title="Mode admin actif" />}
+            </div>
+            <div className="header-date">{today}</div>
           </div>
-          <div className="header-date">{today}</div>
         </div>
       </div>
 
