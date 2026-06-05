@@ -7,9 +7,10 @@ import { getDailyForDate } from '../utils/weatherApi'
 import {
   getMoonCategory, getCoeffCategory, getPressureTrend,
   getTidesInPeriod, getDominantTide,
-  findSimilarDays, SIMILARITY_THRESHOLD,
+  findSimilarDays,
   TREND_LABELS, COEFF_LABELS, TOD_LABELS, TIME_PERIODS,
 } from '../utils/similarity'
+import { checkPin, hasPinStored } from '../utils/pin'
 import { useFavorites } from '../hooks/useFavorites'
 
 const MONTHS = ['Janvier','Février','Mars','Avril','Mai','Juin','Juillet','Août','Septembre','Octobre','Novembre','Décembre']
@@ -193,13 +194,50 @@ function SimilarDaysPanel({ similarDays }) {
   )
 }
 
+/* ── Modal PIN pour favoris ───────────────────────────── */
+function FavPinModal({ onSuccess, onClose }) {
+  const [pin, setPin] = useState('')
+  const [err, setErr] = useState('')
+
+  const tryUnlock = () => {
+    if (checkPin(pin)) { onSuccess(); onClose() }
+    else setErr('Mot de passe incorrect')
+  }
+
+  return (
+    <div className="modal-bg" onClick={onClose}>
+      <div className="modal fav-modal" onClick={e => e.stopPropagation()}>
+        <div className="modal-top">
+          <h2>🔒 Accès favoris</h2>
+          <button className="modal-close" onClick={onClose}>✕</button>
+        </div>
+        <p className="hint" style={{ marginBottom: 14 }}>
+          L'ajout de favoris est protégé. Entrez votre mot de passe.
+        </p>
+        <div className="pin-row">
+          <input
+            className="pin-input" type="password" value={pin}
+            onChange={e => setPin(e.target.value)}
+            onKeyDown={e => e.key === 'Enter' && tryUnlock()}
+            placeholder="Mot de passe…" autoFocus
+          />
+          <button className="btn-unlock" onClick={tryUnlock}>OK</button>
+        </div>
+        {err && <p className="pin-error">{err}</p>}
+      </div>
+    </div>
+  )
+}
+
 /* ── Composant principal ──────────────────────────────── */
 export default function FishingCalendar({ weather, tides, location }) {
   const today = new Date()
-  const [view,  setView]  = useState(new Date(today.getFullYear(), today.getMonth(), 1))
-  const [sel,   setSel]   = useState(null)
-  const [tab,   setTab]   = useState('calendar')
-  const [modal, setModal] = useState(null)
+  const [view,         setView]         = useState(new Date(today.getFullYear(), today.getMonth(), 1))
+  const [sel,          setSel]          = useState(null)
+  const [tab,          setTab]          = useState('calendar')
+  const [modal,        setModal]        = useState(null)
+  const [favUnlocked,  setFavUnlocked]  = useState(() => !hasPinStored()) // auto-libre si pas de PIN
+  const [pinModal,     setPinModal]     = useState(null) // day number en attente
 
   const { isFavorite, upsert, remove } = useFavorites()
 
@@ -234,8 +272,20 @@ export default function FishingCalendar({ weather, tides, location }) {
   }
 
   const openModal = (day) => {
+    if (!favUnlocked && hasPinStored()) {
+      setPinModal(day)   // met en attente, affiche le PIN modal
+      return
+    }
     const date  = new Date(year, month, day)
     const cond  = getConditions(day)
+    setSel(null)
+    setModal({ date, conditions: cond, dayTides: cond.tides, existing: isFavorite(date) })
+  }
+
+  const openModalAfterPin = (day) => {
+    setFavUnlocked(true)
+    const date = new Date(year, month, day)
+    const cond = getConditions(day)
     setSel(null)
     setModal({ date, conditions: cond, dayTides: cond.tides, existing: isFavorite(date) })
   }
@@ -371,6 +421,14 @@ export default function FishingCalendar({ weather, tides, location }) {
           onSave={(extra) => saveFavorite(modal.date, modal.conditions, extra)}
           onDelete={() => remove(modal.date.toISOString().split('T')[0])}
           onClose={() => setModal(null)}
+        />
+      )}
+
+      {/* Modal PIN pour débloquer les favoris */}
+      {pinModal != null && (
+        <FavPinModal
+          onSuccess={() => openModalAfterPin(pinModal)}
+          onClose={() => setPinModal(null)}
         />
       )}
     </section>

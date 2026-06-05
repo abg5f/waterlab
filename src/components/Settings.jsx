@@ -1,23 +1,9 @@
 import { useState, useEffect, useRef } from 'react'
+import { checkPin, savePin, hasPinStored, encodePin } from '../utils/pin'
 
-/* ── Helpers mot de passe ────────────────────────────────── */
-const PIN_KEY = 'wl_api_pin'
-
-// Encodage réversible simple — suffisant pour protéger contre l'accès non autorisé
-function encodePin(pin) {
-  return btoa(encodeURIComponent(pin.trim()))
-}
-
-function checkPin(input) {
-  return encodePin(input) === (localStorage.getItem(PIN_KEY) || '')
-}
-
-function savePin(pin) {
-  localStorage.setItem(PIN_KEY, encodePin(pin))
-}
-
-function hasPinStored() {
-  return !!localStorage.getItem(PIN_KEY)
+/* ── Helpers mot de passe (re-exports pour usage local) ───── */
+function _hasPinStored() {
+  return hasPinStored()
 }
 
 /* ── Location search ─────────────────────────────────────── */
@@ -93,7 +79,7 @@ function LocationSearch({ onSelect, currentName }) {
 
 /* ── Section API (verrouillée) ───────────────────────────── */
 function ApiSection({ stormglassKey, supabaseUrl, supabaseKey, onChange }) {
-  const [phase,      setPhase]      = useState(hasPinStored() ? 'locked' : 'open') // 'locked'|'unlock'|'open'|'set-pin'
+  const [phase,      setPhase]      = useState(_hasPinStored() ? 'locked' : 'open') // 'locked'|'unlock'|'open'|'set-pin'
   const [pinInput,   setPinInput]   = useState('')
   const [pinError,   setPinError]   = useState('')
   const [newPin,     setNewPin]     = useState('')
@@ -111,8 +97,8 @@ function ApiSection({ stormglassKey, supabaseUrl, supabaseKey, onChange }) {
     setPhase('open'); setPinError(''); setNewPin(''); setConfirmPin('')
   }
 
-  const removePin = () => {
-    localStorage.removeItem(PIN_KEY)
+  const handleRemovePin = () => {
+    removePin?.() || localStorage.removeItem('wl_api_pin')
     setPhase('open')
   }
 

@@ -9,8 +9,8 @@ export default defineConfig({
       registerType: 'autoUpdate',
       includeAssets: ['icons/*.png'],
       manifest: {
-        name: 'Poloduf Fishing',
-        short_name: 'Fishing',
+        name: 'WaterLab',
+        short_name: 'WaterLab',
         description: 'Prévisions pêche — marées, lune, solunaire',
         theme_color: '#080f1e',
         background_color: '#050d1a',
