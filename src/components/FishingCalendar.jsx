@@ -1,0 +1,398 @@
+import { useState, useMemo } from 'react'
+import StarRating from './StarRating'
+import { getMoonData } from '../utils/moonPhase'
+import { getFishingScore } from '../utils/scores'
+import { calculateCoefficients, getCoefficientForDate, getTidesForDate, formatTime, coeffLabel, coeffClass } from '../utils/tidesApi'
+import { getDailyForDate } from '../utils/weatherApi'
+import {
+  getMoonCategory, getCoeffCategory, getPressureTrend,
+  getTidesInPeriod, getDominantTide,
+  findSimilarDays, SIMILARITY_THRESHOLD,
+  TREND_LABELS, COEFF_LABELS, TOD_LABELS, TIME_PERIODS,
+} from '../utils/similarity'
+import { useFavorites } from '../hooks/useFavorites'
+
+const MONTHS = ['Janvier','Février','Mars','Avril','Mai','Juin','Juillet','Août','Septembre','Octobre','Novembre','Décembre']
+const DAYS   = ['Lu','Ma','Me','Je','Ve','Sa','Di']
+
+/* ── Modal favori ─────────────────────────────────────── */
+function FavoriteModal({ date, dayTides, existing, conditions, onSave, onDelete, onClose }) {
+  const [comment,    setComment]    = useState(existing?.comment    || '')
+  const [timeOfDay,  setTimeOfDay]  = useState(existing?.time_of_day || 'morning')
+
+  const tidesInPeriod = getTidesInPeriod(dayTides, timeOfDay)
+  const dominantTide  = getDominantTide([...tidesInPeriod])
+
+  const dateStr = date.toLocaleDateString('fr-FR', {
+    weekday: 'long', day: 'numeric', month: 'long', year: 'numeric',
+  })
+
+  const handleSave = () => {
+    onSave({
+      comment,
+      time_of_day:      timeOfDay,
+      tide_period_type: dominantTide?.type || null,
+      tide_period_hour: dominantTide ? new Date(dominantTide.time).getHours() : null,
+    })
+    onClose()
+  }
+
+  return (
+    <div className="modal-bg" onClick={onClose}>
+      <div className="modal fav-modal" onClick={e => e.stopPropagation()}>
+        <div className="modal-top">
+          <h2>⭐ {existing ? 'Modifier le favori' : 'Ajouter aux favoris'}</h2>
+          <button className="modal-close" onClick={onClose}>✕</button>
+        </div>
+
+        <p className="fav-date">{dateStr}</p>
+
+        {/* Résumé des conditions */}
+        <div className="fav-conditions">
+          <span className="fav-cond-item">🌙 {conditions.moonName}</span>
+          {conditions.coeffCategory && (
+            <span className={`fav-cond-item coeff-pill ${conditions.coeffCategory}`}>
+              {COEFF_LABELS[conditions.coeffCategory]} ({conditions.tideCoeff ?? '—'})
+            </span>
+          )}
+          <span className="fav-cond-item">🌡️ {TREND_LABELS[conditions.pressureTrend] ?? '—'}</span>
+          <StarRating score={conditions.fishingScore} size="sm" />
+        </div>
+
+        {/* Créneau */}
+        <div className="fav-section-label">Quand c'était bon ?</div>
+        <div className="tod-selector">
+          {Object.entries(TIME_PERIODS).map(([key, { label }]) => (
+            <button
+              key={key}
+              className={`tod-btn ${timeOfDay === key ? 'active' : ''}`}
+              onClick={() => setTimeOfDay(key)}
+              type="button"
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+
+        {/* Marées du créneau */}
+        <div className="fav-tides-period">
+          {tidesInPeriod.length === 0 ? (
+            <span className="hint">Aucune marée sur ce créneau.</span>
+          ) : (
+            tidesInPeriod.map((t, i) => (
+              <div key={i} className={`fav-tide-row ${t.type === 'high' ? 'tide-high' : 'tide-low'}`}>
+                <span className="fav-tide-arrow">{t.type === 'high' ? '▲' : '▼'}</span>
+                <span className="fav-tide-name">{t.type === 'high' ? 'Haute mer' : 'Basse mer'}</span>
+                <span className="fav-tide-time">{formatTime(t.time)}</span>
+                {t.height != null && <span className="fav-tide-ht">{t.height.toFixed(2)} m</span>}
+                {i === 0 && tidesInPeriod.length > 0 && (
+                  <span className="fav-tide-ref">référence</span>
+                )}
+              </div>
+            ))
+          )}
+        </div>
+
+        {/* Commentaire */}
+        <label className="fav-comment-label">
+          Notes de session
+          <textarea
+            className="fav-textarea"
+            value={comment}
+            onChange={e => setComment(e.target.value)}
+            placeholder="Ex : Barage cap bossé, banc de thazards au large, vent 15 nœuds NO…"
+            rows={3}
+          />
+        </label>
+
+        <div className="modal-actions">
+          {existing && (
+            <button className="btn-delete" type="button" onClick={() => { onDelete(); onClose() }}>
+              🗑 Supprimer
+            </button>
+          )}
+          <button className="btn-cancel" type="button" onClick={onClose}>Annuler</button>
+          <button className="btn-save" type="button" onClick={handleSave}>
+            {existing ? 'Mettre à jour' : '⭐ Ajouter'}
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+/* ── Panneau jours similaires ─────────────────────────── */
+function SimilarDaysPanel({ similarDays }) {
+  const [expanded, setExpanded] = useState(null)
+
+  if (!similarDays.length) return (
+    <div className="similar-empty">
+      <p>🔍 Aucun jour similaire dans les 16 prochains jours.</p>
+      <p className="hint">Marquez des journées favorites dans le calendrier pour activer cette fonctionnalité.</p>
+    </div>
+  )
+
+  return (
+    <div className="similar-list">
+      {similarDays.map((day, i) => {
+        const isOpen  = expanded === i
+        const bestRef = day.refs[0]
+        const dateStr = day.date.toLocaleDateString('fr-FR', { weekday: 'short', day: 'numeric', month: 'long' })
+        return (
+          <div key={i} className={`similar-card ${isOpen ? 'open' : ''}`}>
+            <div className="similar-card-head" onClick={() => setExpanded(isOpen ? null : i)}>
+              <div className="similar-left">
+                <span className="similar-date">{dateStr}</span>
+                <div className="similar-criteria">
+                  {bestRef.criteria.map(c => (
+                    <span key={c.key} className="crit-badge">{c.label}</span>
+                  ))}
+                </div>
+              </div>
+              <div className="similar-right">
+                <span className="similar-score">{bestRef.score}/4</span>
+                <StarRating score={day.score} size="xs" />
+                <span>{isOpen ? '▲' : '▼'}</span>
+              </div>
+            </div>
+
+            {isOpen && (
+              <div className="similar-refs">
+                <p className="similar-refs-title">
+                  Référence{day.refs.length > 1 ? 's' : ''} ({day.refs.length}) :
+                </p>
+                {day.refs.map((ref, j) => {
+                  const refDate    = new Date(ref.favorite.date + 'T12:00:00')
+                  const refDateStr = refDate.toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })
+                  const tod        = ref.favorite.time_of_day
+                  return (
+                    <div key={j} className="ref-item">
+                      <div className="ref-head">
+                        <span className="ref-star">⭐</span>
+                        <span className="ref-date">{refDateStr}</span>
+                        {tod && <span className="ref-tod">{TOD_LABELS[tod]}</span>}
+                        <span className="ref-match">{ref.score}/4</span>
+                      </div>
+                      <div className="ref-criteria">
+                        {ref.criteria.map(c => (
+                          <span key={c.key} className="crit-badge">{c.label}</span>
+                        ))}
+                      </div>
+                      {ref.favorite.comment && (
+                        <blockquote className="ref-comment">"{ref.favorite.comment}"</blockquote>
+                      )}
+                    </div>
+                  )
+                })}
+              </div>
+            )}
+          </div>
+        )
+      })}
+    </div>
+  )
+}
+
+/* ── Composant principal ──────────────────────────────── */
+export default function FishingCalendar({ weather, tides, location }) {
+  const today = new Date()
+  const [view,  setView]  = useState(new Date(today.getFullYear(), today.getMonth(), 1))
+  const [sel,   setSel]   = useState(null)
+  const [tab,   setTab]   = useState('calendar')
+  const [modal, setModal] = useState(null)
+
+  const { isFavorite, upsert, remove } = useFavorites()
+
+  const year  = view.getFullYear()
+  const month = view.getMonth()
+  const last  = new Date(year, month + 1, 0).getDate()
+  const pad   = (new Date(year, month, 1).getDay() + 6) % 7
+
+  const allCoeffs = useMemo(() => (tides ? calculateCoefficients(tides) : []), [tides])
+
+  const getConditions = (dateOrDay) => {
+    const date = dateOrDay instanceof Date ? dateOrDay : new Date(year, month, dateOrDay)
+    const moon     = getMoonData(date)
+    const coeff    = getCoefficientForDate(allCoeffs, date)
+    const dayTides = tides ? getTidesForDate(tides, date) : []
+    let trend = 0
+    if (weather.data) {
+      const d = getDailyForDate(weather.data, date)
+      if (d?.pressure && d?.pressurePrev) trend = d.pressure - d.pressurePrev
+    }
+    return {
+      moonPhase:     moon.phase,
+      moonName:      moon.name,
+      moonIcon:      moon.icon,
+      moonIllum:     moon.illumination,
+      tideCoeff:     coeff,
+      coeffCategory: getCoeffCategory(coeff),
+      pressureTrend: getPressureTrend(trend),
+      fishingScore:  getFishingScore(date, trend, dayTides, coeff),
+      tides:         dayTides,
+    }
+  }
+
+  const openModal = (day) => {
+    const date  = new Date(year, month, day)
+    const cond  = getConditions(day)
+    setSel(null)
+    setModal({ date, conditions: cond, dayTides: cond.tides, existing: isFavorite(date) })
+  }
+
+  const saveFavorite = (date, conditions, extra) => {
+    upsert({
+      date:             date.toISOString().split('T')[0],
+      comment:          extra.comment,
+      moon_phase:       conditions.moonPhase,
+      moon_name:        conditions.moonName,
+      coeff_category:   conditions.coeffCategory,
+      tide_coeff:       conditions.tideCoeff,
+      pressure_trend:   conditions.pressureTrend,
+      fishing_score:    conditions.fishingScore,
+      time_of_day:      extra.time_of_day,
+      tide_period_type: extra.tide_period_type,
+      tide_period_hour: extra.tide_period_hour,
+    })
+  }
+
+  const cells = [...Array(pad).fill(null), ...Array.from({ length: last }, (_, i) => i + 1)]
+
+  return (
+    <section className="calendar-section">
+      {/* Header navigation */}
+      <div className="cal-header">
+        <button className="cal-nav" onClick={() => setView(new Date(year, month - 1, 1))}>‹</button>
+        <h3>{MONTHS[month]} {year}</h3>
+        <button className="cal-nav" onClick={() => setView(new Date(year, month + 1, 1))}>›</button>
+      </div>
+
+      {/* Onglets */}
+      <div className="cal-tabs">
+        <button className={`cal-tab ${tab === 'calendar' ? 'active' : ''}`} onClick={() => setTab('calendar')}>
+          📅 Calendrier
+        </button>
+        <button className={`cal-tab ${tab === 'similar' ? 'active' : ''}`} onClick={() => setTab('similar')}>
+          🔮 Jours similaires
+        </button>
+      </div>
+
+      {/* ── Vue calendrier ── */}
+      {tab === 'calendar' && (
+        <>
+          <div className="cal-grid">
+            {DAYS.map(d => <div key={d} className="cal-head">{d}</div>)}
+            {cells.map((day, i) => {
+              if (!day) return <div key={`e${i}`} className="cal-cell empty" />
+              const date     = new Date(year, month, day)
+              const cond     = getConditions(day)
+              const isToday    = date.toDateString() === today.toDateString()
+              const isPast     = date < new Date(today.getFullYear(), today.getMonth(), today.getDate())
+              const isSelected = sel === day
+              const favEntry   = isFavorite(date)
+              const coeff      = getCoefficientForDate(allCoeffs, date)
+              const moon       = getMoonData(date)
+              return (
+                <div
+                  key={day}
+                  className={`cal-cell score-${cond.fishingScore} ${isToday ? 'is-today' : ''} ${isPast ? 'is-past' : ''} ${isSelected ? 'is-selected' : ''} ${favEntry ? 'is-favorite' : ''}`}
+                  onClick={() => setSel(isSelected ? null : day)}
+                >
+                  <span className="cal-num">{day}</span>
+                  {favEntry
+                    ? <span className="cal-fav-star" title={TOD_LABELS[favEntry.time_of_day] || ''}>⭐</span>
+                    : <span className="cal-moon">{moon.icon}</span>
+                  }
+                  {coeff != null && <span className={`cal-coeff ${coeffClass(coeff)}`}>{coeff}</span>}
+                  <StarRating score={cond.fishingScore} size="xs" />
+                </div>
+              )
+            })}
+          </div>
+
+          {/* Détail du jour */}
+          {sel && (() => {
+            const date     = new Date(year, month, sel)
+            const cond     = getConditions(sel)
+            const coeff    = getCoefficientForDate(allCoeffs, date)
+            const favEntry = isFavorite(date)
+            const daily    = weather.data ? getDailyForDate(weather.data, date) : null
+            return (
+              <div className="cal-detail">
+                <div className="cal-detail-top">
+                  <strong>{sel} {MONTHS[month]} {year}</strong>
+                  <StarRating score={cond.fishingScore} size="md" />
+                </div>
+                <div className="cal-detail-grid">
+                  <div className="cal-det-item"><span>{cond.moonIcon}</span><span>{cond.moonName} ({cond.moonIllum}%)</span></div>
+                  {coeff != null && <div className="cal-det-item"><span>🌊</span><span className={coeffClass(coeff)}>Coeff. {coeff} — {coeffLabel(coeff)}</span></div>}
+                  <div className="cal-det-item"><span>🌡️</span><span>{TREND_LABELS[cond.pressureTrend]}</span></div>
+                  {daily?.windMax != null && <div className="cal-det-item"><span>💨</span><span>{Math.round(daily.windMax)} nœuds</span></div>}
+                  {daily?.rain   != null && <div className="cal-det-item"><span>🌧️</span><span>{daily.rain.toFixed(1)} mm</span></div>}
+                </div>
+                {favEntry && (
+                  <div className="detail-fav-info">
+                    <span className="detail-fav-tod">⭐ {TOD_LABELS[favEntry.time_of_day] || '—'}</span>
+                    {favEntry.tide_period_type && (
+                      <span className="detail-fav-tide">
+                        {favEntry.tide_period_type === 'high' ? '▲ Haute mer' : '▼ Basse mer'}
+                        {favEntry.tide_period_hour != null && ` vers ${favEntry.tide_period_hour}h`}
+                      </span>
+                    )}
+                    {favEntry.comment && <blockquote className="detail-fav-comment">"{favEntry.comment}"</blockquote>}
+                  </div>
+                )}
+                <button className="btn-fav-toggle" onClick={() => openModal(sel)}>
+                  {favEntry ? '✏️ Modifier le favori' : '⭐ Ajouter aux favoris'}
+                </button>
+              </div>
+            )
+          })()}
+        </>
+      )}
+
+      {/* ── Vue jours similaires ── */}
+      {tab === 'similar' && (
+        <SimilarContent
+          weather={weather}
+          tides={tides}
+          allCoeffs={allCoeffs}
+          getConditions={getConditions}
+        />
+      )}
+
+      {/* Modal favori */}
+      {modal && (
+        <FavoriteModal
+          date={modal.date}
+          dayTides={modal.dayTides}
+          existing={modal.existing}
+          conditions={modal.conditions}
+          onSave={(extra) => saveFavorite(modal.date, modal.conditions, extra)}
+          onDelete={() => remove(modal.date.toISOString().split('T')[0])}
+          onClose={() => setModal(null)}
+        />
+      )}
+    </section>
+  )
+}
+
+/* Sous-composant pour accéder à useFavorites sans violer les règles de hooks */
+function SimilarContent({ weather, tides, allCoeffs, getConditions }) {
+  const { favorites } = useFavorites()
+  const today = new Date()
+
+  const similarDays = useMemo(() => {
+    if (!favorites.length) return []
+    const candidates = []
+    for (let i = 0; i <= 15; i++) {
+      const d    = new Date(today); d.setDate(today.getDate() + i)
+      const cond = getConditions(d)
+      candidates.push({ date: d, ...cond, score: cond.fishingScore })
+    }
+    return findSimilarDays(favorites, candidates)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [favorites, tides, weather.data])
+
+  return <SimilarDaysPanel similarDays={similarDays} />
+}
