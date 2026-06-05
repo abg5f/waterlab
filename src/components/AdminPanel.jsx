@@ -22,7 +22,15 @@ export default function AdminPanel({ stormglassKey, supabaseUrl, supabaseKey, on
   const [tidesRefreshMsg, setTidesRefreshMsg] = useState('')
 
   const handleRefreshTides = async () => {
-    if (!onRefreshTides || callsRemaining <= 0) return
+    if (!onRefreshTides) {
+      setTidesRefreshMsg('✗ Refresh non disponible')
+      return
+    }
+    if (callsRemaining <= 0) {
+      setTidesRefreshMsg('✗ Quota épuisé pour aujourd\'hui')
+      return
+    }
+
     setTidesRefreshing(true)
     setTidesRefreshMsg('')
     try {
@@ -30,7 +38,8 @@ export default function AdminPanel({ stormglassKey, supabaseUrl, supabaseKey, on
       setTidesRefreshMsg('✓ Marées rafraîchies')
       setTimeout(() => setTidesRefreshMsg(''), 2000)
     } catch (err) {
-      setTidesRefreshMsg(`✗ Erreur: ${err.message}`)
+      const errorMsg = err.message || 'Erreur inconnue'
+      setTidesRefreshMsg(`✗ ${errorMsg}`)
     } finally {
       setTidesRefreshing(false)
     }
