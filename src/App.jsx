@@ -49,6 +49,7 @@ export default function App() {
   }
 
   const weather = useWeather(location)
+  const [tidesRefreshFn, setTidesRefreshFn] = useState(null)
 
   return (
     <SupabaseContext.Provider value={supabase}>
@@ -62,7 +63,7 @@ export default function App() {
         />
 
         <main className="main-content">
-          <TidesWrapper location={location} apiKey={apiKey} weather={weather} />
+          <TidesWrapper location={location} apiKey={apiKey} weather={weather} onRefreshFnReady={setTidesRefreshFn} />
         </main>
 
         {showLocation && (
@@ -82,6 +83,7 @@ export default function App() {
             onSessionUnlock={() => setAdminUnlocked(true)}
             onSave={saveAdmin}
             onClose={() => setShowAdmin(false)}
+            onRefreshTides={tidesRefreshFn}
           />
         )}
       </div>
@@ -89,9 +91,16 @@ export default function App() {
   )
 }
 
-function TidesWrapper({ location, apiKey, weather }) {
+function TidesWrapper({ location, apiKey, weather, onRefreshFnReady }) {
   const tides = useTides(location, apiKey)
   const [selectedDate, setSelectedDate] = useState(null) // null = aujourd'hui
+
+  // Partage la fonction refresh au AdminPanel
+  useMemo(() => {
+    if (tides.refresh && onRefreshFnReady) {
+      onRefreshFnReady(tides.refresh)
+    }
+  }, [tides.refresh, onRefreshFnReady])
 
   return (
     <>

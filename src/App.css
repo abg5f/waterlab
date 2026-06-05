@@ -322,6 +322,24 @@ body { font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif
 .btn-set-pin { font-size:11px; background:none; border:1px solid var(--border2); color:var(--text2); border-radius:var(--r-sm); padding:4px 10px; cursor:pointer; white-space:nowrap; }
 .btn-set-pin:hover { border-color:var(--teal); color:var(--teal); }
 
+/* Tides refresh button */
+.btn-refresh-tides {
+  background:var(--blue);
+  color:#fff;
+  border:none;
+  border-radius:var(--r-sm);
+  padding:10px 16px;
+  cursor:pointer;
+  font-weight:600;
+  font-size:14px;
+  transition:opacity 0.15s;
+}
+.btn-refresh-tides:hover:not(:disabled) { opacity:0.85; }
+.btn-refresh-tides:disabled {
+  opacity:0.6;
+  cursor:not-allowed;
+}
+
 /* Location Search */
 .loc-search { position:relative; }
 .loc-input-wrap { position:relative; }
