@@ -230,7 +230,7 @@ function FavPinModal({ onSuccess, onClose }) {
 }
 
 /* ── Composant principal ──────────────────────────────── */
-export default function FishingCalendar({ weather, tides, location }) {
+export default function FishingCalendar({ weather, tides, location, onDateSelect }) {
   const today = new Date()
   const [view,         setView]         = useState(new Date(today.getFullYear(), today.getMonth(), 1))
   const [sel,          setSel]          = useState(null)
@@ -346,7 +346,11 @@ export default function FishingCalendar({ weather, tides, location }) {
                 <div
                   key={day}
                   className={`cal-cell score-${cond.fishingScore} ${isToday ? 'is-today' : ''} ${isPast ? 'is-past' : ''} ${isSelected ? 'is-selected' : ''} ${favEntry ? 'is-favorite' : ''}`}
-                  onClick={() => setSel(isSelected ? null : day)}
+                  onClick={() => {
+                    const next = isSelected ? null : day
+                    setSel(next)
+                    onDateSelect?.(next ? new Date(year, month, day) : null)
+                  }}
                 >
                   <span className="cal-num">{day}</span>
                   {favEntry

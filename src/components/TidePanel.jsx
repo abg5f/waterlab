@@ -10,11 +10,17 @@ function errorHint(msg) {
 
 const SOURCE_LABELS = { supabase: '🗄️ Supabase', stormglass: '🌊 Stormglass', cache: '💾 Cache local' }
 
-export default function TidePanel({ data, loading, error, fetchedAt, source, refresh, hasKey }) {
-  const today = new Date()
-  const todayTides = data ? getTidesForDate(data, today) : []
-  const allCoeffs  = data ? calculateCoefficients(data) : []
-  const coeffMap   = Object.fromEntries(allCoeffs.map(c => [c.time, c.coeff]))
+export default function TidePanel({ data, loading, error, fetchedAt, source, refresh, hasKey, selectedDate }) {
+  const today       = new Date()
+  const displayDate = selectedDate || today
+  const isToday     = displayDate.toDateString() === today.toDateString()
+  const displayTides = data ? getTidesForDate(data, displayDate) : []
+  const allCoeffs    = data ? calculateCoefficients(data) : []
+  const coeffMap     = Object.fromEntries(allCoeffs.map(c => [c.time, c.coeff]))
+
+  const panelTitle = isToday
+    ? 'Marées du jour'
+    : displayDate.toLocaleDateString('fr-FR', { day: 'numeric', month: 'long' })
 
   if (!hasKey) return (
     <div className="panel panel-wide tide-empty-panel">
@@ -44,11 +50,11 @@ export default function TidePanel({ data, loading, error, fetchedAt, source, ref
     </div>
   )
 
-  if (!data || todayTides.length === 0) return (
+  if (!data) return (
     <div className="panel panel-wide">
       <div className="panel-label">🌊 Marées</div>
       <div className="tide-no-data">
-        <p>Données non chargées pour aujourd'hui.</p>
+        <p>Données non chargées.</p>
         <button className="btn-load" onClick={refresh}>
           Charger les marées
           <span className="call-badge">1 appel API</span>
@@ -57,19 +63,31 @@ export default function TidePanel({ data, loading, error, fetchedAt, source, ref
     </div>
   )
 
+  if (displayTides.length === 0) return (
+    <div className="panel panel-wide">
+      <div className="panel-header">
+        <div className="panel-label">🌊 {panelTitle}</div>
+        <button className="refresh-btn" onClick={refresh}>↺</button>
+      </div>
+      <div className="tide-no-data">
+        <p>Aucune marée disponible pour cette date.</p>
+      </div>
+    </div>
+  )
+
   return (
     <div className="panel panel-wide">
       <div className="panel-header">
-        <div className="panel-label">🌊 Marées du jour</div>
+        <div className="panel-label">🌊 {panelTitle}</div>
         <div className="panel-meta">
           {source && <span className={`source-badge ${source}`}>{SOURCE_LABELS[source]}</span>}
           {fetchedAt && <span className="fetched-at">màj {fetchedAt}</span>}
-          <button className="refresh-btn" onClick={refresh} title="Rafraîchir (vérifie Supabase en priorité)">↺</button>
+          <button className="refresh-btn" onClick={refresh} title="Rafraîchir">↺</button>
         </div>
       </div>
 
       <div className="tide-list">
-        {todayTides.map((t, i) => {
+        {displayTides.map((t, i) => {
           const coeff = t.type === 'high' ? coeffMap[t.time] : null
           return (
             <div key={i} className={`tide-row ${t.type === 'high' ? 'tide-high' : 'tide-low'}`}>

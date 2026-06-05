@@ -91,6 +91,8 @@ export default function App() {
 
 function TidesWrapper({ location, apiKey, weather }) {
   const tides = useTides(location, apiKey)
+  const [selectedDate, setSelectedDate] = useState(null) // null = aujourd'hui
+
   return (
     <>
       <ScoreBanner tides={tides} weather={weather} />
@@ -100,10 +102,14 @@ function TidesWrapper({ location, apiKey, weather }) {
           data={tides.data} loading={tides.loading} error={tides.error}
           fetchedAt={tides.fetchedAt} source={tides.source}
           refresh={tides.refresh} hasKey={!!apiKey}
+          selectedDate={selectedDate}
         />
         <SolunarPanel location={location} />
       </div>
-      <FishingCalendar weather={weather} tides={tides.data} location={location} />
+      <FishingCalendar
+        weather={weather} tides={tides.data} location={location}
+        onDateSelect={setSelectedDate}
+      />
     </>
   )
 }
