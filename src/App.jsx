@@ -1,7 +1,8 @@
 import { useState, useMemo } from 'react'
 import { SupabaseContext, createSupabaseClient } from './lib/supabase'
 import Header from './components/Header'
-import Settings from './components/Settings'
+import LocationModal from './components/LocationModal'
+import AdminPanel from './components/AdminPanel'
 import ScoreBanner from './components/ScoreBanner'
 import TidePanel from './components/TidePanel'
 import MoonPanel from './components/MoonPanel'
@@ -25,7 +26,10 @@ const ENV_SB_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY || ''
 const ENV_SG_KEY = import.meta.env.VITE_STORMGLASS_KEY    || ''
 
 export default function App() {
-  const [showSettings, setShowSettings] = useState(false)
+  const [showLocation, setShowLocation] = useState(false)
+  const [showAdmin,    setShowAdmin]    = useState(false)
+  const [adminUnlocked, setAdminUnlocked] = useState(false) // session-level
+
   const [location, setLocation] = useState(() => load('wl_location', DEFAULT_LOC))
   const [apiKey,   setApiKey]   = useState(() => localStorage.getItem('wl_stormglass_key') || ENV_SG_KEY)
   const [sbUrl,    setSbUrl]    = useState(() => localStorage.getItem('wl_supabase_url')   || ENV_SB_URL)
@@ -33,12 +37,15 @@ export default function App() {
 
   const supabase = useMemo(() => createSupabaseClient(sbUrl, sbKey), [sbUrl, sbKey])
 
-  const saveSettings = ({ location: loc, stormglassKey, supabaseUrl, supabaseKey }) => {
-    setLocation(loc);         localStorage.setItem('wl_location',       JSON.stringify(loc))
-    setApiKey(stormglassKey); localStorage.setItem('wl_stormglass_key', stormglassKey)
-    setSbUrl(supabaseUrl);    localStorage.setItem('wl_supabase_url',   supabaseUrl)
-    setSbKey(supabaseKey);    localStorage.setItem('wl_supabase_key',   supabaseKey)
-    setShowSettings(false)
+  const saveLocation = (loc) => {
+    setLocation(loc)
+    localStorage.setItem('wl_location', JSON.stringify(loc))
+  }
+
+  const saveAdmin = ({ stormglassKey, supabaseUrl, supabaseKey }) => {
+    setApiKey(stormglassKey);  localStorage.setItem('wl_stormglass_key', stormglassKey)
+    setSbUrl(supabaseUrl);     localStorage.setItem('wl_supabase_url',   supabaseUrl)
+    setSbKey(supabaseKey);     localStorage.setItem('wl_supabase_key',   supabaseKey)
   }
 
   const weather = useWeather(location)
@@ -46,15 +53,35 @@ export default function App() {
   return (
     <SupabaseContext.Provider value={supabase}>
       <div className="app">
-        <Header location={location} onSettings={() => setShowSettings(true)} supabaseConnected={!!supabase} />
+        <Header
+          location={location}
+          onLocationEdit={() => setShowLocation(true)}
+          onAdminAccess={() => setShowAdmin(true)}
+          supabaseConnected={!!supabase}
+          adminUnlocked={adminUnlocked}
+        />
+
         <main className="main-content">
           <TidesWrapper location={location} apiKey={apiKey} weather={weather} />
         </main>
-        {showSettings && (
-          <Settings
-            location={location} stormglassKey={apiKey}
-            supabaseUrl={sbUrl} supabaseKey={sbKey}
-            onSave={saveSettings} onClose={() => setShowSettings(false)}
+
+        {showLocation && (
+          <LocationModal
+            location={location}
+            onSave={saveLocation}
+            onClose={() => setShowLocation(false)}
+          />
+        )}
+
+        {showAdmin && (
+          <AdminPanel
+            stormglassKey={apiKey}
+            supabaseUrl={sbUrl}
+            supabaseKey={sbKey}
+            sessionUnlocked={adminUnlocked}
+            onSessionUnlock={() => setAdminUnlocked(true)}
+            onSave={saveAdmin}
+            onClose={() => setShowAdmin(false)}
           />
         )}
       </div>

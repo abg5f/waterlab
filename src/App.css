@@ -295,6 +295,15 @@ body { font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif
 .btn-cancel { background:none; border:1px solid var(--border2); color:var(--text2); padding:9px 18px; border-radius:var(--r-sm); cursor:pointer; font-size:14px; }
 .btn-save   { background:var(--teal); color:#000; font-weight:700; padding:9px 20px; border-radius:var(--r-sm); border:none; cursor:pointer; font-size:14px; }
 
+/* ── Admin panel ───────────────────────────────────────── */
+.admin-modal { max-width: 460px; }
+.admin-section-title { font-size:12px; font-weight:700; color:var(--text2); text-transform:uppercase; letter-spacing:0.7px; margin-bottom:10px; }
+.admin-dot { display:inline-block; width:6px; height:6px; border-radius:50%; background:var(--orange); margin-left:6px; vertical-align:middle; animation:pulse 2s infinite; }
+.pin-ok { font-size:12px; color:var(--green); margin-top:6px; }
+
+/* Header location edit */
+.header-location { gap:6px; }
+
 /* ── API Lock ──────────────────────────────────────────── */
 .api-section { margin-bottom: 4px; }
 .api-section.locked { background:rgba(255,255,255,0.03); border:1px solid var(--border); border-radius:var(--r); padding:16px; }
