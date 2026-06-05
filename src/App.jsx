@@ -49,8 +49,6 @@ export default function App() {
   }
 
   const weather = useWeather(location)
-  const [tidesRefreshFn, setTidesRefreshFn] = useState(null)
-  const [callsRemaining, setCallsRemaining] = useState(10)
 
   return (
     <SupabaseContext.Provider value={supabase}>
@@ -64,7 +62,7 @@ export default function App() {
         />
 
         <main className="main-content">
-          <TidesWrapper location={location} apiKey={apiKey} weather={weather} onRefreshReady={(fn, remaining) => { setTidesRefreshFn(fn); setCallsRemaining(remaining) }} />
+          <TidesWrapper location={location} apiKey={apiKey} weather={weather} />
         </main>
 
         {showLocation && (
@@ -84,8 +82,6 @@ export default function App() {
             onSessionUnlock={() => setAdminUnlocked(true)}
             onSave={saveAdmin}
             onClose={() => setShowAdmin(false)}
-            onRefreshTides={tidesRefreshFn}
-            callsRemaining={callsRemaining}
           />
         )}
       </div>
@@ -93,14 +89,9 @@ export default function App() {
   )
 }
 
-function TidesWrapper({ location, apiKey, weather, onRefreshReady }) {
+function TidesWrapper({ location, apiKey, weather }) {
   const tides = useTides(location, apiKey)
   const [selectedDate, setSelectedDate] = useState(null) // null = aujourd'hui
-
-  // Partager la fonction refresh et le compteur avec le parent
-  useEffect(() => {
-    onRefreshReady?.(tides.refresh, tides.callsRemaining)
-  }, [tides.refresh, tides.callsRemaining, onRefreshReady])
 
   return (
     <>

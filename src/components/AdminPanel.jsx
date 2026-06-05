@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { checkPin, savePin, hasPinStored } from '../utils/pin'
 
-export default function AdminPanel({ stormglassKey, supabaseUrl, supabaseKey, onSave, onClose, sessionUnlocked, onSessionUnlock, onRefreshTides, callsRemaining }) {
+export default function AdminPanel({ stormglassKey, supabaseUrl, supabaseKey, onSave, onClose, sessionUnlocked, onSessionUnlock }) {
   const [pinInput,   setPinInput]   = useState('')
   const [pinError,   setPinError]   = useState('')
   const [view,       setView]       = useState(sessionUnlocked ? 'panel' : (hasPinStored() ? 'lock' : 'panel'))
@@ -17,33 +17,6 @@ export default function AdminPanel({ stormglassKey, supabaseUrl, supabaseKey, on
   const [confirmPin,  setConfirmPin]  = useState('')
   const [pinMsg,      setPinMsg]      = useState('')
 
-  // Refresh marées
-  const [tidesRefreshing, setTidesRefreshing] = useState(false)
-  const [tidesRefreshMsg, setTidesRefreshMsg] = useState('')
-
-  const handleRefreshTides = async () => {
-    if (!onRefreshTides) {
-      setTidesRefreshMsg('✗ Refresh non disponible')
-      return
-    }
-    if (callsRemaining <= 0) {
-      setTidesRefreshMsg('✗ Quota épuisé pour aujourd\'hui')
-      return
-    }
-
-    setTidesRefreshing(true)
-    setTidesRefreshMsg('')
-    try {
-      await onRefreshTides(true) // true = forcer le refresh
-      setTidesRefreshMsg('✓ Marées rafraîchies')
-      setTimeout(() => setTidesRefreshMsg(''), 2000)
-    } catch (err) {
-      const errorMsg = err.message || 'Erreur inconnue'
-      setTidesRefreshMsg(`✗ ${errorMsg}`)
-    } finally {
-      setTidesRefreshing(false)
-    }
-  }
 
   const unlock = () => {
     if (checkPin(pinInput)) {
@@ -106,26 +79,7 @@ export default function AdminPanel({ stormglassKey, supabaseUrl, supabaseKey, on
             Clé API
             <input type="password" value={sgKey} onChange={e => setSgKey(e.target.value)} placeholder="Clé Stormglass" />
           </label>
-          <p className="hint" style={{ marginTop: 8 }}>Gratuit: 10 appels/jour | Refresh auto dimanche</p>
-
-          <div style={{ marginTop: 12, padding: 10, background: 'rgba(0,196,212,0.1)', borderRadius: 6 }}>
-            <p style={{ fontSize: 12, color: 'var(--text2)', marginBottom: 8 }}>
-              Appels restants aujourd'hui: <strong style={{ color: 'var(--teal)', fontSize: 14 }}>{callsRemaining ?? '?'}/10</strong>
-            </p>
-            <button
-              className="btn-refresh-tides"
-              onClick={handleRefreshTides}
-              disabled={tidesRefreshing || (callsRemaining ?? 0) <= 0}
-              style={{ marginTop: 0, width: '100%' }}
-            >
-              {tidesRefreshing ? '⟳ Rafraîchissement…' : '↺ Rafraîchir maintenant'}
-            </button>
-            {tidesRefreshMsg && (
-              <p style={{ fontSize: 12, color: tidesRefreshMsg.includes('✓') ? 'var(--green)' : 'var(--red)', marginTop: 8 }}>
-                {tidesRefreshMsg}
-              </p>
-            )}
-          </div>
+          <p className="hint" style={{ marginTop: 8 }}>Gratuit: 10 appels/jour | Refresh auto dimanche | Données en cache local</p>
         </section>
 
         <section style={{ marginTop: 16 }}>
