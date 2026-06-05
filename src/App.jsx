@@ -49,7 +49,6 @@ export default function App() {
   }
 
   const weather = useWeather(location)
-  const [tidesRefreshFn, setTidesRefreshFn] = useState(null)
 
   return (
     <SupabaseContext.Provider value={supabase}>
@@ -63,7 +62,7 @@ export default function App() {
         />
 
         <main className="main-content">
-          <TidesWrapper location={location} apiKey={apiKey} weather={weather} onRefreshFnReady={setTidesRefreshFn} />
+          <TidesWrapper location={location} apiKey={apiKey} weather={weather} />
         </main>
 
         {showLocation && (
@@ -83,7 +82,6 @@ export default function App() {
             onSessionUnlock={() => setAdminUnlocked(true)}
             onSave={saveAdmin}
             onClose={() => setShowAdmin(false)}
-            onRefreshTides={tidesRefreshFn}
           />
         )}
       </div>
@@ -91,16 +89,9 @@ export default function App() {
   )
 }
 
-function TidesWrapper({ location, apiKey, weather, onRefreshFnReady }) {
+function TidesWrapper({ location, apiKey, weather }) {
   const tides = useTides(location, apiKey)
   const [selectedDate, setSelectedDate] = useState(null) // null = aujourd'hui
-
-  // Partage la fonction refresh au AdminPanel
-  useMemo(() => {
-    if (tides.refresh && onRefreshFnReady) {
-      onRefreshFnReady(tides.refresh)
-    }
-  }, [tides.refresh, onRefreshFnReady])
 
   return (
     <>
@@ -109,8 +100,7 @@ function TidesWrapper({ location, apiKey, weather, onRefreshFnReady }) {
         <MoonPanel location={location} weather={weather} selectedDate={selectedDate} />
         <TidePanel
           data={tides.data} loading={tides.loading} error={tides.error}
-          fetchedAt={tides.fetchedAt} source={tides.source}
-          refresh={tides.refresh} hasKey={!!apiKey}
+          hasKey={!!apiKey}
           selectedDate={selectedDate}
         />
         <SolunarPanel location={location} />

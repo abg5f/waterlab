@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { checkPin, savePin, hasPinStored } from '../utils/pin'
 
-export default function AdminPanel({ stormglassKey, supabaseUrl, supabaseKey, onSave, onClose, sessionUnlocked, onSessionUnlock, onRefreshTides }) {
+export default function AdminPanel({ stormglassKey, supabaseUrl, supabaseKey, onSave, onClose, sessionUnlocked, onSessionUnlock }) {
   const [pinInput,   setPinInput]   = useState('')
   const [pinError,   setPinError]   = useState('')
   const [view,       setView]       = useState(sessionUnlocked ? 'panel' : (hasPinStored() ? 'lock' : 'panel'))
@@ -16,24 +16,6 @@ export default function AdminPanel({ stormglassKey, supabaseUrl, supabaseKey, on
   const [newPin,      setNewPin]      = useState('')
   const [confirmPin,  setConfirmPin]  = useState('')
   const [pinMsg,      setPinMsg]      = useState('')
-
-  // Rafraîchissement marées
-  const [tidesRefreshing, setTidesRefreshing] = useState(false)
-  const [tidesRefreshMsg, setTidesRefreshMsg] = useState('')
-
-  const handleRefreshTides = async () => {
-    setTidesRefreshing(true)
-    setTidesRefreshMsg('')
-    try {
-      await onRefreshTides?.(true) // true = forcer le refresh
-      setTidesRefreshMsg('✓ Marées rafraîchies avec succès')
-      setTimeout(() => setTidesRefreshMsg(''), 3000)
-    } catch (err) {
-      setTidesRefreshMsg(`✗ Erreur: ${err.message}`)
-    } finally {
-      setTidesRefreshing(false)
-    }
-  }
 
   const unlock = () => {
     if (checkPin(pinInput)) {
@@ -109,24 +91,6 @@ export default function AdminPanel({ stormglassKey, supabaseUrl, supabaseKey, on
             <input type="password" value={sbKey} onChange={e => setSbKey(e.target.value)} placeholder="eyJhbGci…" />
           </label>
           {sbUrl && sbKey && <div className="sb-status-ok"><span>✓</span> Supabase configuré</div>}
-        </section>
-
-        <section style={{ marginTop: 16 }}>
-          <h3 className="admin-section-title">🌊 Refresh API Marées</h3>
-          <p className="hint">Forcer la mise à jour des marées depuis Stormglass. Les marées sont normalement cachées par mois.</p>
-          <button
-            className="btn-refresh-tides"
-            onClick={handleRefreshTides}
-            disabled={tidesRefreshing}
-            style={{ marginTop: 8, width: '100%' }}
-          >
-            {tidesRefreshing ? '⟳ Rafraîchissement en cours…' : '↺ Rafraîchir maintenant'}
-          </button>
-          {tidesRefreshMsg && (
-            <p className={tidesRefreshMsg.includes('✓') ? 'pin-ok' : 'pin-error'} style={{ marginTop: 8 }}>
-              {tidesRefreshMsg}
-            </p>
-          )}
         </section>
 
         <section style={{ marginTop: 16 }}>

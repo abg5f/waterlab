@@ -124,6 +124,12 @@ export function useTides(location, apiKey) {
       /* 3. Persister (permanent) dans Supabase + localStorage */
       await dbSave(supabase, locKey, mStr, data)
       lsSave(mKey, data)
+      // Aussi sauvegarder pour le mois suivant (pour accès cohérent en fin de mois)
+      const nextMonth = new Date(now.getFullYear(), now.getMonth() + 1, 1)
+      const nextMKey = monthKey(location, nextMonth)
+      const nextMStr = `${nextMonth.getFullYear()}-${String(nextMonth.getMonth() + 1).padStart(2,'0')}`
+      lsSave(nextMKey, data)
+      await dbSave(supabase, locKey, nextMStr, data)
 
       const fetchedAt = now.toLocaleTimeString('fr-FR', { hour:'2-digit', minute:'2-digit' })
       setState({ data, loading: false, error: null, fetchedAt, source: force ? 'stormglass (forced)' : 'stormglass' })
@@ -148,6 +154,12 @@ export function useTides(location, apiKey) {
         const data = await fetchTides(location.lat, location.lng, apiKey, start, end)
         await dbSave(supabase, locKey, mStr, data)
         lsSave(mKey, data)
+        // Aussi sauvegarder pour le mois suivant
+        const nextMonth = new Date(now.getFullYear(), now.getMonth() + 1, 1)
+        const nextMKey = monthKey(location, nextMonth)
+        const nextMStr = `${nextMonth.getFullYear()}-${String(nextMonth.getMonth() + 1).padStart(2,'0')}`
+        lsSave(nextMKey, data)
+        await dbSave(supabase, locKey, nextMStr, data)
         // Mettre à jour l'état silencieusement
         const fetchedAt = now.toLocaleTimeString('fr-FR', { hour:'2-digit', minute:'2-digit' })
         setState(s => ({ ...s, data, fetchedAt, source: 'stormglass' }))

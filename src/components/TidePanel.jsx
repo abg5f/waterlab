@@ -8,9 +8,8 @@ function errorHint(msg) {
   return `Erreur : ${msg}`
 }
 
-const SOURCE_LABELS = { supabase: '🗄️ Supabase', stormglass: '🌊 Stormglass', cache: '💾 Cache local' }
 
-export default function TidePanel({ data, loading, error, fetchedAt, source, refresh, hasKey, selectedDate }) {
+export default function TidePanel({ data, loading, error, hasKey, selectedDate }) {
   const today       = new Date()
   const displayDate = selectedDate || today
   const isToday     = displayDate.toDateString() === today.toDateString()
@@ -35,10 +34,7 @@ export default function TidePanel({ data, loading, error, fetchedAt, source, ref
 
   if (error) return (
     <div className="panel panel-wide">
-      <div className="panel-header">
-        <div className="panel-label">🌊 Marées</div>
-        <button className="refresh-btn" onClick={refresh}>↺ Réessayer</button>
-      </div>
+      <div className="panel-label">🌊 Marées</div>
       <div className="tide-error">⚠️ {errorHint(error)}</div>
     </div>
   )
@@ -65,10 +61,7 @@ export default function TidePanel({ data, loading, error, fetchedAt, source, ref
 
   if (displayTides.length === 0) return (
     <div className="panel panel-wide">
-      <div className="panel-header">
-        <div className="panel-label">🌊 {panelTitle}</div>
-        <button className="refresh-btn" onClick={refresh}>↺</button>
-      </div>
+      <div className="panel-label">🌊 {panelTitle}</div>
       <div className="tide-no-data">
         <p>Aucune marée disponible pour cette date.</p>
       </div>
@@ -77,14 +70,7 @@ export default function TidePanel({ data, loading, error, fetchedAt, source, ref
 
   return (
     <div className="panel panel-wide">
-      <div className="panel-header">
-        <div className="panel-label">🌊 {panelTitle}</div>
-        <div className="panel-meta">
-          {source && <span className={`source-badge ${source}`}>{SOURCE_LABELS[source]}</span>}
-          {fetchedAt && <span className="fetched-at">màj {fetchedAt}</span>}
-          <button className="refresh-btn" onClick={refresh} title="Rafraîchir">↺</button>
-        </div>
-      </div>
+      <div className="panel-label">🌊 {panelTitle}</div>
 
       <div className="tide-list">
         {displayTides.map((t, i) => {
