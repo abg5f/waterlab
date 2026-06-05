@@ -178,6 +178,15 @@ export function useTides(location, apiKey) {
     return { ...result, callsRemaining: getDailyCallsRemaining() }
   }, [refresh])
 
+  // Charger les données au démarrage ou quand la clé change
+  useEffect(() => {
+    if (!apiKey) return
+    // Charger au démarrage si pas de données
+    if (!lsCached) {
+      refresh()
+    }
+  }, [apiKey, locKey]) // Dépendances: quand la clé change ou la localisation
+
   // Auto-refresh hebdomadaire (dimanche seulement)
   useEffect(() => {
     if (!apiKey || !shouldWeeklyRefresh(locKey)) return
