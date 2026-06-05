@@ -23,7 +23,7 @@ const load = (key, fb) => { try { return JSON.parse(localStorage.getItem(key)) |
 
 const ENV_SB_URL = import.meta.env.VITE_SUPABASE_URL      || ''
 const ENV_SB_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY || ''
-const ENV_SG_KEY = import.meta.env.VITE_STORMGLASS_KEY    || ''
+const ENV_TIDES_KEY = import.meta.env.VITE_WORLDTIDES_KEY || ''
 
 export default function App() {
   const [showLocation, setShowLocation] = useState(false)
@@ -31,7 +31,7 @@ export default function App() {
   const [adminUnlocked, setAdminUnlocked] = useState(false) // session-level
 
   const [location, setLocation] = useState(() => load('wl_location', DEFAULT_LOC))
-  const [apiKey,   setApiKey]   = useState(() => localStorage.getItem('wl_stormglass_key') || ENV_SG_KEY)
+  const [apiKey,   setApiKey]   = useState(() => localStorage.getItem('wl_tides_key') || ENV_TIDES_KEY)
   const [sbUrl,    setSbUrl]    = useState(() => localStorage.getItem('wl_supabase_url')   || ENV_SB_URL)
   const [sbKey,    setSbKey]    = useState(() => localStorage.getItem('wl_supabase_key')   || ENV_SB_KEY)
 
@@ -42,8 +42,8 @@ export default function App() {
     localStorage.setItem('wl_location', JSON.stringify(loc))
   }
 
-  const saveAdmin = ({ stormglassKey, supabaseUrl, supabaseKey }) => {
-    setApiKey(stormglassKey);  localStorage.setItem('wl_stormglass_key', stormglassKey)
+  const saveAdmin = ({ tidesKey, supabaseUrl, supabaseKey }) => {
+    setApiKey(tidesKey);       localStorage.setItem('wl_tides_key',      tidesKey)
     setSbUrl(supabaseUrl);     localStorage.setItem('wl_supabase_url',   supabaseUrl)
     setSbKey(supabaseKey);     localStorage.setItem('wl_supabase_key',   supabaseKey)
   }
@@ -75,7 +75,7 @@ export default function App() {
 
         {showAdmin && (
           <AdminPanel
-            stormglassKey={apiKey}
+            tidesKey={apiKey}
             supabaseUrl={sbUrl}
             supabaseKey={sbKey}
             sessionUnlocked={adminUnlocked}
