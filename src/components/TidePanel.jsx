@@ -50,11 +50,7 @@ export default function TidePanel({ data, loading, error, hasKey, selectedDate }
     <div className="panel panel-wide">
       <div className="panel-label">🌊 Marées</div>
       <div className="tide-no-data">
-        <p>Données non chargées.</p>
-        <button className="btn-load" onClick={refresh}>
-          Charger les marées
-          <span className="call-badge">1 appel API</span>
-        </button>
+        <p>Chargement des données…</p>
       </div>
     </div>
   )
