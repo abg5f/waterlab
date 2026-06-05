@@ -3,7 +3,8 @@ import { fetchTides } from '../utils/tidesApi'
 import { useSupabase, getTideCacheFromDB, saveTideCacheToDB } from '../lib/supabase'
 
 const LS_PREFIX = 'wl_tides_month_v1'
-const LS_AUTO_REFRESH = 'wl_tides_auto_refresh_date'
+const LS_WEEKLY_REFRESH = 'wl_tides_weekly_refresh_date'
+const LS_DAILY_CALLS = 'wl_tides_daily_calls' // Compteur d'appels du jour
 
 function makeLocKey(loc) { return `${loc.lat.toFixed(3)}_${loc.lng.toFixed(3)}` }
 
@@ -54,32 +55,60 @@ async function dbSave(supabase, locKey, monthStr, tideData) {
 }
 
 /**
- * Vérifie si un refresh automatique est nécessaire (2 fois par mois: 1er et 15)
+ * Vérifie si un refresh hebdomadaire est nécessaire (dimanche)
  */
-function shouldAutoRefresh(locKey) {
+function shouldWeeklyRefresh(locKey) {
   const now = new Date()
-  const today = now.getDate()
-  const lastRefreshStr = localStorage.getItem(`${LS_AUTO_REFRESH}_${locKey}`)
-  const lastRefresh = lastRefreshStr ? new Date(lastRefreshStr) : null
+  const dayOfWeek = now.getDay() // 0 = dimanche, 6 = samedi
+  if (dayOfWeek !== 0) return false // Pas dimanche
 
-  // Auto-refresh aux 1er et 15 du mois
-  const refreshDates = [1, 15]
-  if (!refreshDates.includes(today)) return false
+  const lastRefreshStr = localStorage.getItem(`${LS_WEEKLY_REFRESH}_${locKey}`)
+  if (!lastRefreshStr) return true
 
-  // Vérifier qu'on n'a pas déjà fait un refresh aujourd'hui
-  if (lastRefresh) {
-    const sameDay = lastRefresh.toDateString() === now.toDateString()
-    if (sameDay) return false
-  }
-
-  return true
+  const lastRefresh = new Date(lastRefreshStr)
+  const sameWeek = lastRefresh.getTime() > (now.getTime() - 7 * 24 * 60 * 60 * 1000)
+  return !sameWeek
 }
 
 /**
- * Enregistre la date du dernier auto-refresh
+ * Enregistre la date du dernier refresh hebdomadaire
  */
-function recordAutoRefresh(locKey) {
-  localStorage.setItem(`${LS_AUTO_REFRESH}_${locKey}`, new Date().toISOString())
+function recordWeeklyRefresh(locKey) {
+  localStorage.setItem(`${LS_WEEKLY_REFRESH}_${locKey}`, new Date().toISOString())
+}
+
+/**
+ * Compte les appels API du jour
+ */
+function incrementDailyCallCount() {
+  const today = new Date().toISOString().split('T')[0]
+  const stored = localStorage.getItem(LS_DAILY_CALLS)
+  let data = stored ? JSON.parse(stored) : { date: today, count: 0 }
+
+  // Reset si c'est un nouveau jour
+  if (data.date !== today) {
+    data = { date: today, count: 0 }
+  }
+
+  data.count += 1
+  localStorage.setItem(LS_DAILY_CALLS, JSON.stringify(data))
+  return data.count
+}
+
+/**
+ * Retourne les appels restants du jour (10 max par jour gratuit)
+ */
+function getDailyCallsRemaining() {
+  const today = new Date().toISOString().split('T')[0]
+  const stored = localStorage.getItem(LS_DAILY_CALLS)
+  let data = stored ? JSON.parse(stored) : { date: today, count: 0 }
+
+  // Reset si c'est un nouveau jour
+  if (data.date !== today) {
+    return 10
+  }
+
+  return Math.max(0, 10 - data.count)
 }
 
 export function useTides(location, apiKey) {
@@ -89,11 +118,12 @@ export function useTides(location, apiKey) {
   const lsCached  = lsLoad(mKey)
 
   const [state, setState] = useState({
-    data:      lsCached?.data  || null,
-    loading:   false,
-    error:     null,
-    fetchedAt: lsCached?.savedAt ? new Date(lsCached.savedAt).toLocaleTimeString('fr-FR', { hour:'2-digit', minute:'2-digit' }) : null,
-    source:    lsCached ? 'cache' : null,
+    data:           lsCached?.data  || null,
+    loading:        false,
+    error:          null,
+    fetchedAt:      lsCached?.savedAt ? new Date(lsCached.savedAt).toLocaleTimeString('fr-FR', { hour:'2-digit', minute:'2-digit' }) : null,
+    source:         lsCached ? 'cache' : null,
+    callsRemaining: getDailyCallsRemaining(),
   })
 
   const refresh = useCallback(async (force = false) => {
@@ -131,19 +161,29 @@ export function useTides(location, apiKey) {
       lsSave(nextMKey, data)
       await dbSave(supabase, locKey, nextMStr, data)
 
+      // Incrémenter le compteur d'appels
+      const callCount = incrementDailyCallCount()
+      const remaining = getDailyCallsRemaining()
+
       const fetchedAt = now.toLocaleTimeString('fr-FR', { hour:'2-digit', minute:'2-digit' })
-      setState({ data, loading: false, error: null, fetchedAt, source: force ? 'stormglass (forced)' : 'stormglass' })
+      setState({ data, loading: false, error: null, fetchedAt, source: force ? 'stormglass (forced)' : 'stormglass', callsRemaining: remaining })
     } catch (e) {
       setState(s => ({ ...s, loading: false, error: e.message }))
     }
   }, [location.lat, location.lng, apiKey, locKey, mKey, supabase])
 
-  // Auto-refresh 2 fois par mois (1er et 15)
-  useEffect(() => {
-    if (!apiKey || !shouldAutoRefresh(locKey)) return
+  // Retourner aussi la fonction pour incrementer les appels
+  const refreshWithTracking = useCallback(async (force = false) => {
+    const result = await refresh(force)
+    return { ...result, callsRemaining: getDailyCallsRemaining() }
+  }, [refresh])
 
-    const doAutoRefresh = async () => {
-      recordAutoRefresh(locKey)
+  // Auto-refresh hebdomadaire (dimanche seulement)
+  useEffect(() => {
+    if (!apiKey || !shouldWeeklyRefresh(locKey)) return
+
+    const doWeeklyRefresh = async () => {
+      recordWeeklyRefresh(locKey)
       // Faire un refresh silencieux (ne pas afficher le loading)
       const now = new Date()
       const mStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2,'0')}`
@@ -152,6 +192,10 @@ export function useTides(location, apiKey) {
         const start = new Date(now.getFullYear(), now.getMonth(), 1, 0, 0, 0)
         const end = new Date(now.getFullYear(), now.getMonth() + 2, 0, 23, 59, 59)
         const data = await fetchTides(location.lat, location.lng, apiKey, start, end)
+
+        // Incrémenter le compteur d'appels
+        incrementDailyCallCount()
+
         await dbSave(supabase, locKey, mStr, data)
         lsSave(mKey, data)
         // Aussi sauvegarder pour le mois suivant
@@ -162,14 +206,14 @@ export function useTides(location, apiKey) {
         await dbSave(supabase, locKey, nextMStr, data)
         // Mettre à jour l'état silencieusement
         const fetchedAt = now.toLocaleTimeString('fr-FR', { hour:'2-digit', minute:'2-digit' })
-        setState(s => ({ ...s, data, fetchedAt, source: 'stormglass' }))
+        setState(s => ({ ...s, data, fetchedAt, source: 'stormglass', callsRemaining: getDailyCallsRemaining() }))
       } catch (e) {
-        console.warn('Auto-refresh marées échoué:', e.message)
+        console.warn('Refresh hebdomadaire marées échoué:', e.message)
       }
     }
 
-    doAutoRefresh()
+    doWeeklyRefresh()
   }, [apiKey, locKey, mKey, location.lat, location.lng, supabase])
 
-  return { ...state, refresh }
+  return { ...state, refresh, callsRemaining: state.callsRemaining }
 }

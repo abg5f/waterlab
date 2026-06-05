@@ -1,23 +1,9 @@
 export async function fetchTides(lat, lng, apiKey, start, end) {
-  // World Tides API v3: https://www.worldtides.info/api/v3
-  // Duration en secondes = nombre de secondes à partir du timestamp start
-  const duration = Math.ceil((end - start) / 1000)
-  const startTimestamp = Math.floor(start.getTime() / 1000)
-
-  const url = `https://www.worldtides.info/api/v3/predictions?lon=${lng}&lat=${lat}&key=${apiKey}&start=${startTimestamp}&length=${duration}`
-
-  const res = await fetch(url)
-  if (!res.ok) throw new Error(`WorldTides: ${res.status}`)
+  const url = `https://api.stormglass.io/v2/tide/extremes/point?lat=${lat}&lng=${lng}&start=${encodeURIComponent(start.toISOString())}&end=${encodeURIComponent(end.toISOString())}`
+  const res = await fetch(url, { headers: { Authorization: apiKey } })
+  if (!res.ok) throw new Error(`Stormglass: ${res.status}`)
   const json = await res.json()
-
-  if (!json.tides) throw new Error('WorldTides: Invalid response')
-
-  // Transformer le format WorldTides au format attendu
-  return json.tides.map(tide => ({
-    time: new Date(tide.pt * 1000).toISOString(),
-    type: tide.type === 'High Water' ? 'high' : 'low',
-    height: tide.height
-  }))
+  return json.data || []
 }
 
 export function getTidesForDate(tides, date) {

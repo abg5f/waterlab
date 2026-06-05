@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { SupabaseContext, createSupabaseClient } from './lib/supabase'
 import Header from './components/Header'
 import LocationModal from './components/LocationModal'
@@ -23,7 +23,7 @@ const load = (key, fb) => { try { return JSON.parse(localStorage.getItem(key)) |
 
 const ENV_SB_URL = import.meta.env.VITE_SUPABASE_URL      || ''
 const ENV_SB_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY || ''
-const ENV_TIDES_KEY = import.meta.env.VITE_WORLDTIDES_KEY || ''
+const ENV_SG_KEY = import.meta.env.VITE_STORMGLASS_KEY    || ''
 
 export default function App() {
   const [showLocation, setShowLocation] = useState(false)
@@ -31,7 +31,7 @@ export default function App() {
   const [adminUnlocked, setAdminUnlocked] = useState(false) // session-level
 
   const [location, setLocation] = useState(() => load('wl_location', DEFAULT_LOC))
-  const [apiKey,   setApiKey]   = useState(() => localStorage.getItem('wl_tides_key') || ENV_TIDES_KEY)
+  const [apiKey,   setApiKey]   = useState(() => localStorage.getItem('wl_stormglass_key') || ENV_SG_KEY)
   const [sbUrl,    setSbUrl]    = useState(() => localStorage.getItem('wl_supabase_url')   || ENV_SB_URL)
   const [sbKey,    setSbKey]    = useState(() => localStorage.getItem('wl_supabase_key')   || ENV_SB_KEY)
 
@@ -42,13 +42,15 @@ export default function App() {
     localStorage.setItem('wl_location', JSON.stringify(loc))
   }
 
-  const saveAdmin = ({ tidesKey, supabaseUrl, supabaseKey }) => {
-    setApiKey(tidesKey);       localStorage.setItem('wl_tides_key',      tidesKey)
+  const saveAdmin = ({ stormglassKey, supabaseUrl, supabaseKey }) => {
+    setApiKey(stormglassKey);  localStorage.setItem('wl_stormglass_key', stormglassKey)
     setSbUrl(supabaseUrl);     localStorage.setItem('wl_supabase_url',   supabaseUrl)
     setSbKey(supabaseKey);     localStorage.setItem('wl_supabase_key',   supabaseKey)
   }
 
   const weather = useWeather(location)
+  const [tidesRefreshFn, setTidesRefreshFn] = useState(null)
+  const [callsRemaining, setCallsRemaining] = useState(10)
 
   return (
     <SupabaseContext.Provider value={supabase}>
@@ -62,7 +64,7 @@ export default function App() {
         />
 
         <main className="main-content">
-          <TidesWrapper location={location} apiKey={apiKey} weather={weather} />
+          <TidesWrapper location={location} apiKey={apiKey} weather={weather} onRefreshReady={(fn, remaining) => { setTidesRefreshFn(fn); setCallsRemaining(remaining) }} />
         </main>
 
         {showLocation && (
@@ -75,13 +77,15 @@ export default function App() {
 
         {showAdmin && (
           <AdminPanel
-            tidesKey={apiKey}
+            stormglassKey={apiKey}
             supabaseUrl={sbUrl}
             supabaseKey={sbKey}
             sessionUnlocked={adminUnlocked}
             onSessionUnlock={() => setAdminUnlocked(true)}
             onSave={saveAdmin}
             onClose={() => setShowAdmin(false)}
+            onRefreshTides={tidesRefreshFn}
+            callsRemaining={callsRemaining}
           />
         )}
       </div>
@@ -89,9 +93,16 @@ export default function App() {
   )
 }
 
-function TidesWrapper({ location, apiKey, weather }) {
+function TidesWrapper({ location, apiKey, weather, onRefreshReady }) {
   const tides = useTides(location, apiKey)
   const [selectedDate, setSelectedDate] = useState(null) // null = aujourd'hui
+
+  // Partager la fonction refresh et le compteur avec le parent
+  useEffect(() => {
+    if (tides.refresh && onRefreshReady) {
+      onRefreshReady(tides.refresh, tides.callsRemaining)
+    }
+  }, [tides.refresh, tides.callsRemaining, onRefreshReady])
 
   return (
     <>

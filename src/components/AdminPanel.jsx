@@ -1,13 +1,13 @@
 import { useState } from 'react'
 import { checkPin, savePin, hasPinStored } from '../utils/pin'
 
-export default function AdminPanel({ tidesKey, supabaseUrl, supabaseKey, onSave, onClose, sessionUnlocked, onSessionUnlock }) {
+export default function AdminPanel({ stormglassKey, supabaseUrl, supabaseKey, onSave, onClose, sessionUnlocked, onSessionUnlock, onRefreshTides, callsRemaining }) {
   const [pinInput,   setPinInput]   = useState('')
   const [pinError,   setPinError]   = useState('')
   const [view,       setView]       = useState(sessionUnlocked ? 'panel' : (hasPinStored() ? 'lock' : 'panel'))
 
   // Champs API
-  const [tidesKeyInput, setTidesKeyInput] = useState(tidesKey)
+  const [sgKey, setSgKey] = useState(stormglassKey)
   const [sbUrl, setSbUrl] = useState(supabaseUrl)
   const [sbKey, setSbKey] = useState(supabaseKey)
 
@@ -16,6 +16,25 @@ export default function AdminPanel({ tidesKey, supabaseUrl, supabaseKey, onSave,
   const [newPin,      setNewPin]      = useState('')
   const [confirmPin,  setConfirmPin]  = useState('')
   const [pinMsg,      setPinMsg]      = useState('')
+
+  // Refresh marées
+  const [tidesRefreshing, setTidesRefreshing] = useState(false)
+  const [tidesRefreshMsg, setTidesRefreshMsg] = useState('')
+
+  const handleRefreshTides = async () => {
+    if (!onRefreshTides || callsRemaining <= 0) return
+    setTidesRefreshing(true)
+    setTidesRefreshMsg('')
+    try {
+      await onRefreshTides(true) // true = forcer le refresh
+      setTidesRefreshMsg('✓ Marées rafraîchies')
+      setTimeout(() => setTidesRefreshMsg(''), 2000)
+    } catch (err) {
+      setTidesRefreshMsg(`✗ Erreur: ${err.message}`)
+    } finally {
+      setTidesRefreshing(false)
+    }
+  }
 
   const unlock = () => {
     if (checkPin(pinInput)) {
@@ -36,7 +55,7 @@ export default function AdminPanel({ tidesKey, supabaseUrl, supabaseKey, onSave,
   }
 
   const handleSave = () => {
-    onSave({ tidesKey: tidesKeyInput, supabaseUrl: sbUrl, supabaseKey: sbKey })
+    onSave({ stormglassKey: sgKey, supabaseUrl: sbUrl, supabaseKey: sbKey })
     onClose()
   }
 
@@ -73,12 +92,31 @@ export default function AdminPanel({ tidesKey, supabaseUrl, supabaseKey, onSave,
         </div>
 
         <section>
-          <h3 className="admin-section-title">🌊 World Tides — Marées</h3>
+          <h3 className="admin-section-title">🌊 Stormglass — Marées</h3>
           <label>
             Clé API
-            <input type="password" value={tidesKeyInput} onChange={e => setTidesKeyInput(e.target.value)} placeholder="Clé World Tides" />
+            <input type="password" value={sgKey} onChange={e => setSgKey(e.target.value)} placeholder="Clé Stormglass" />
           </label>
-          <p className="hint" style={{ marginTop: 8 }}>Gratuit: 5,000 appels/mois | API: worldtides.info/api/v3</p>
+          <p className="hint" style={{ marginTop: 8 }}>Gratuit: 10 appels/jour | Refresh auto dimanche</p>
+
+          <div style={{ marginTop: 12, padding: 10, background: 'rgba(0,196,212,0.1)', borderRadius: 6 }}>
+            <p style={{ fontSize: 12, color: 'var(--text2)', marginBottom: 8 }}>
+              Appels restants aujourd'hui: <strong style={{ color: 'var(--teal)', fontSize: 14 }}>{callsRemaining ?? '?'}/10</strong>
+            </p>
+            <button
+              className="btn-refresh-tides"
+              onClick={handleRefreshTides}
+              disabled={tidesRefreshing || (callsRemaining ?? 0) <= 0}
+              style={{ marginTop: 0, width: '100%' }}
+            >
+              {tidesRefreshing ? '⟳ Rafraîchissement…' : '↺ Rafraîchir maintenant'}
+            </button>
+            {tidesRefreshMsg && (
+              <p style={{ fontSize: 12, color: tidesRefreshMsg.includes('✓') ? 'var(--green)' : 'var(--red)', marginTop: 8 }}>
+                {tidesRefreshMsg}
+              </p>
+            )}
+          </div>
         </section>
 
         <section style={{ marginTop: 16 }}>
