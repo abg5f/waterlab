@@ -1,6 +1,6 @@
 import { useState, useCallback, useEffect } from 'react'
 import { fetchTides } from '../utils/tidesApi'
-import { useSupabase, getTideCacheFromDB, saveTideCacheToDB } from '../lib/supabase'
+import { useSupabase } from '../lib/supabase'
 
 const LS_PREFIX = 'wl_tides_month_v1'
 const LS_WEEKLY_REFRESH = 'wl_tides_weekly_refresh_date'
@@ -127,7 +127,7 @@ export function useTides(location, apiKey) {
   })
 
   const refresh = useCallback(async (force = false) => {
-    if (!apiKey) return
+    if (!apiKey) return { ok: false, error: 'Clé API manquante' }
     setState(s => ({ ...s, loading: true, error: null }))
 
     const now   = new Date()
@@ -140,8 +140,8 @@ export function useTides(location, apiKey) {
         if (dbCache) {
           const fetchedAt = new Date(dbCache.fetched_at).toLocaleTimeString('fr-FR', { hour:'2-digit', minute:'2-digit' })
           lsSave(mKey, dbCache.tide_data)
-          setState({ data: dbCache.tide_data, loading: false, error: null, fetchedAt, source: 'supabase' })
-          return
+          setState({ data: dbCache.tide_data, loading: false, error: null, fetchedAt, source: 'supabase', callsRemaining: getDailyCallsRemaining() })
+          return { ok: true }
         }
       }
 
@@ -162,21 +162,47 @@ export function useTides(location, apiKey) {
       await dbSave(supabase, locKey, nextMStr, data)
 
       // Incrémenter le compteur d'appels
-      const callCount = incrementDailyCallCount()
+      incrementDailyCallCount()
       const remaining = getDailyCallsRemaining()
 
       const fetchedAt = now.toLocaleTimeString('fr-FR', { hour:'2-digit', minute:'2-digit' })
       setState({ data, loading: false, error: null, fetchedAt, source: force ? 'stormglass (forced)' : 'stormglass', callsRemaining: remaining })
+      return { ok: true }
     } catch (e) {
       setState(s => ({ ...s, loading: false, error: e.message }))
+      return { ok: false, error: e.message }
     }
   }, [location.lat, location.lng, apiKey, locKey, mKey, supabase])
 
-  // Retourner aussi la fonction pour incrementer les appels
-  const refreshWithTracking = useCallback(async (force = false) => {
-    const result = await refresh(force)
-    return { ...result, callsRemaining: getDailyCallsRemaining() }
-  }, [refresh])
+  /**
+   * Charge les marées depuis le cache UNIQUEMENT (localStorage déjà lu à
+   * l'init + Supabase). N'appelle JAMAIS Stormglass → ne consomme aucun quota.
+   * Exécuté à chaque montage / changement de lieu ou de mois.
+   */
+  const loadFromCache = useCallback(async () => {
+    // localStorage est déjà dans l'état initial (lsCached). On complète via Supabase.
+    if (!supabase) return
+    // Spinner UNIQUEMENT si on n'a pas encore de données locales à afficher.
+    setState(s => (s.data ? s : { ...s, loading: true }))
+    const now  = new Date()
+    const mStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2,'0')}`
+    try {
+      const dbCache = await dbLoad(supabase, locKey, mStr)
+      if (dbCache?.tide_data) {
+        const fetchedAt = new Date(dbCache.fetched_at).toLocaleTimeString('fr-FR', { hour:'2-digit', minute:'2-digit' })
+        lsSave(mKey, dbCache.tide_data)
+        setState(s => ({ ...s, data: dbCache.tide_data, loading: false, error: null, fetchedAt, source: 'supabase' }))
+      } else {
+        // Rien en cache : on arrête le spinner → message "aucune donnée" clair.
+        setState(s => ({ ...s, loading: false }))
+      }
+    } catch (e) {
+      setState(s => ({ ...s, loading: false }))
+      console.warn('Lecture cache Supabase marées échouée:', e.message)
+    }
+  }, [supabase, locKey, mKey])
+
+  useEffect(() => { loadFromCache() }, [loadFromCache])
 
   // Auto-refresh hebdomadaire (dimanche seulement)
   useEffect(() => {

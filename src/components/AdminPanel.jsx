@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { checkPin, savePin, hasPinStored } from '../utils/pin'
 
-export default function AdminPanel({ stormglassKey, supabaseUrl, supabaseKey, onSave, onClose, sessionUnlocked, onSessionUnlock, tidesRefresh, callsRemaining, tidesLoading, tidesError }) {
+export default function AdminPanel({ stormglassKey, supabaseUrl, supabaseKey, onSave, onClose, sessionUnlocked, onSessionUnlock, tidesRefresh, callsRemaining }) {
   const [pinInput,   setPinInput]   = useState('')
   const [pinError,   setPinError]   = useState('')
   const [view,       setView]       = useState(sessionUnlocked ? 'panel' : (hasPinStored() ? 'lock' : 'panel'))
@@ -21,16 +21,28 @@ export default function AdminPanel({ stormglassKey, supabaseUrl, supabaseKey, on
   const [refreshing, setRefreshing] = useState(false)
   const [refreshMsg, setRefreshMsg] = useState('')
 
+  const refreshErrorMsg = (msg) => {
+    if (!msg) return 'Échec du rafraîchissement'
+    if (msg.includes('402')) return 'Quota dépassé (10 appels/jour). Réessayez demain.'
+    if (msg.includes('401') || msg.includes('403')) return 'Clé API invalide ou expirée.'
+    if (msg.includes('429')) return 'Trop de requêtes. Réessayez dans quelques minutes.'
+    return msg
+  }
+
   const handleRefreshTides = async () => {
     if (!tidesRefresh) return
     setRefreshing(true)
     setRefreshMsg('')
     try {
-      await tidesRefresh(true) // force = true pour ignorer le cache
-      setRefreshMsg('✓ Marées mises à jour!')
-      setTimeout(() => setRefreshMsg(''), 3000)
+      const result = await tidesRefresh(true) // force = true pour ignorer le cache
+      if (result?.ok) {
+        setRefreshMsg('✓ Marées mises à jour !')
+        setTimeout(() => setRefreshMsg(''), 4000)
+      } else {
+        setRefreshMsg(`✗ ${refreshErrorMsg(result?.error)}`)
+      }
     } catch (e) {
-      setRefreshMsg(`✗ Erreur: ${e.message || 'Refresh échoué'}`)
+      setRefreshMsg(`✗ ${refreshErrorMsg(e?.message)}`)
     } finally {
       setRefreshing(false)
     }

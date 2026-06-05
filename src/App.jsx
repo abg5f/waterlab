@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from 'react'
+import { useState, useMemo } from 'react'
 import { SupabaseContext, createSupabaseClient } from './lib/supabase'
 import Header from './components/Header'
 import LocationModal from './components/LocationModal'
@@ -48,84 +48,86 @@ export default function App() {
     setSbKey(supabaseKey);     localStorage.setItem('wl_supabase_key',   supabaseKey)
   }
 
-  const weather = useWeather(location)
-
   return (
     <SupabaseContext.Provider value={supabase}>
-      <div className="app">
-        <Header
-          location={location}
-          onLocationEdit={() => setShowLocation(true)}
-          onAdminAccess={() => setShowAdmin(true)}
-          supabaseConnected={!!supabase}
-          adminUnlocked={adminUnlocked}
-        />
-
-        <main className="main-content">
-          <TidesWrapper location={location} apiKey={apiKey} weather={weather} />
-        </main>
-
-        {showLocation && (
-          <LocationModal
-            location={location}
-            onSave={saveLocation}
-            onClose={() => setShowLocation(false)}
-          />
-        )}
-
-        {showAdmin && (
-          <TidesAdminWrapper
-            apiKey={apiKey} location={location}
-            stormglassKey={apiKey} supabaseUrl={sbUrl} supabaseKey={sbKey}
-            sessionUnlocked={adminUnlocked} onSessionUnlock={() => setAdminUnlocked(true)}
-            onSave={saveAdmin} onClose={() => setShowAdmin(false)}
-          />
-        )}
-      </div>
+      <AppShell
+        location={location} apiKey={apiKey} sbUrl={sbUrl} sbKey={sbKey}
+        showLocation={showLocation} setShowLocation={setShowLocation}
+        showAdmin={showAdmin} setShowAdmin={setShowAdmin}
+        adminUnlocked={adminUnlocked} setAdminUnlocked={setAdminUnlocked}
+        supabaseConnected={!!supabase}
+        saveLocation={saveLocation} saveAdmin={saveAdmin}
+      />
     </SupabaseContext.Provider>
   )
 }
 
-function TidesWrapper({ location, apiKey, weather }) {
-  const tides = useTides(location, apiKey)
+/**
+ * AppShell vit À L'INTÉRIEUR du SupabaseContext.Provider, donc useTides()
+ * peut accéder au client Supabase via le context. Une SEULE instance de
+ * useTides est partagée entre le panneau principal et l'admin → le refresh
+ * manuel met à jour le panneau en direct, sans dépendance circulaire.
+ */
+function AppShell({
+  location, apiKey, sbUrl, sbKey,
+  showLocation, setShowLocation,
+  showAdmin, setShowAdmin,
+  adminUnlocked, setAdminUnlocked,
+  supabaseConnected,
+  saveLocation, saveAdmin,
+}) {
+  const weather = useWeather(location)
+  const tides   = useTides(location, apiKey)
   const [selectedDate, setSelectedDate] = useState(null) // null = aujourd'hui
 
   return (
-    <>
-      <ScoreBanner tides={tides} weather={weather} />
-      <div className="panels-row">
-        <MoonPanel location={location} weather={weather} selectedDate={selectedDate} />
-        <TidePanel
-          data={tides.data} loading={tides.loading} error={tides.error}
-          hasKey={!!apiKey}
-          selectedDate={selectedDate}
-        />
-        <SolunarPanel location={location} />
-      </div>
-      <FishingCalendar
-        weather={weather} tides={tides.data} location={location}
-        onDateSelect={setSelectedDate}
+    <div className="app">
+      <Header
+        location={location}
+        onLocationEdit={() => setShowLocation(true)}
+        onAdminAccess={() => setShowAdmin(true)}
+        supabaseConnected={supabaseConnected}
+        adminUnlocked={adminUnlocked}
       />
-    </>
-  )
-}
 
-function TidesAdminWrapper({ apiKey, location, stormglassKey, supabaseUrl, supabaseKey, sessionUnlocked, onSessionUnlock, onSave, onClose }) {
-  const tides = useTides(location, apiKey)
+      <main className="main-content">
+        <ScoreBanner tides={tides} weather={weather} />
+        <div className="panels-row">
+          <MoonPanel location={location} weather={weather} selectedDate={selectedDate} />
+          <TidePanel
+            data={tides.data} loading={tides.loading} error={tides.error}
+            hasKey={!!apiKey}
+            selectedDate={selectedDate}
+          />
+          <SolunarPanel location={location} />
+        </div>
+        <FishingCalendar
+          weather={weather} tides={tides.data} location={location}
+          onDateSelect={setSelectedDate}
+        />
+      </main>
 
-  return (
-    <AdminPanel
-      stormglassKey={stormglassKey}
-      supabaseUrl={supabaseUrl}
-      supabaseKey={supabaseKey}
-      sessionUnlocked={sessionUnlocked}
-      onSessionUnlock={onSessionUnlock}
-      onSave={onSave}
-      onClose={onClose}
-      tidesRefresh={tides.refresh}
-      callsRemaining={tides.callsRemaining}
-      tidesLoading={tides.loading}
-      tidesError={tides.error}
-    />
+      {showLocation && (
+        <LocationModal
+          location={location}
+          onSave={saveLocation}
+          onClose={() => setShowLocation(false)}
+        />
+      )}
+
+      {showAdmin && (
+        <AdminPanel
+          stormglassKey={apiKey}
+          supabaseUrl={sbUrl}
+          supabaseKey={sbKey}
+          sessionUnlocked={adminUnlocked}
+          onSessionUnlock={() => setAdminUnlocked(true)}
+          onSave={saveAdmin}
+          onClose={() => setShowAdmin(false)}
+          tidesRefresh={tides.refresh}
+          callsRemaining={tides.callsRemaining}
+        />
+      )}
+    </div>
   )
 }

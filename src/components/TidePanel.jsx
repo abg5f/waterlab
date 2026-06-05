@@ -26,8 +26,8 @@ export default function TidePanel({ data, loading, error, hasKey, selectedDate }
       <div className="panel-label">🌊 Marées</div>
       <div className="tide-no-key">
         <span>🔑</span>
-        <p>Ajoutez votre clé <strong>World Tides</strong> dans les paramètres.</p>
-        <p className="hint">Gratuit — 5,000 appels/mois sur worldtides.info</p>
+        <p>Ajoutez votre clé <strong>Stormglass</strong> dans les paramètres.</p>
+        <p className="hint">Gratuit — 10 appels/jour sur stormglass.io</p>
       </div>
     </div>
   )
@@ -46,18 +46,21 @@ export default function TidePanel({ data, loading, error, hasKey, selectedDate }
     </div>
   )
 
-  if (!data && !error) return (
-    <div className="panel panel-wide">
-      <div className="panel-label">🌊 Marées</div>
-      <div className="tide-loading"><span className="spinner" /> Chargement…</div>
-    </div>
-  )
-
   if (!data && error) return (
     <div className="panel panel-wide">
       <div className="panel-label">🌊 Marées</div>
       <div className="tide-error">⚠️ {errorHint(error)}</div>
-      <p className="hint" style={{ marginTop: 12, textAlign: 'center' }}>Les marées seront mises à jour dimanche. Données: cache local</p>
+      <p className="hint" style={{ marginTop: 12, textAlign: 'center' }}>Mise à jour automatique chaque dimanche.</p>
+    </div>
+  )
+
+  if (!data && !error) return (
+    <div className="panel panel-wide">
+      <div className="panel-label">🌊 Marées</div>
+      <div className="tide-no-data">
+        <p>Aucune donnée de marée en cache.</p>
+        <p className="hint" style={{ marginTop: 8 }}>Mise à jour automatique chaque dimanche, ou rafraîchissez manuellement depuis le menu admin.</p>
+      </div>
     </div>
   )
 
