@@ -3,7 +3,7 @@ import { calculateCoefficients, getTidesForDate, formatTime, coeffLabel, coeffCl
 function errorHint(msg) {
   if (!msg) return msg
   if (msg.includes('401') || msg.includes('403')) return 'Clé API invalide ou expirée — vérifiez les paramètres.'
-  if (msg.includes('402')) return 'Quota dépassé (5,000 appels/mois gratuit).'
+  if (msg.includes('402')) return 'Quota dépassé (10 appels/jour gratuit Stormglass).'
   if (msg.includes('429')) return 'Trop de requêtes — réessayez dans quelques minutes.'
   return `Erreur : ${msg}`
 }

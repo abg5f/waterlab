@@ -97,12 +97,10 @@ function TidesWrapper({ location, apiKey, weather, onRefreshReady }) {
   const tides = useTides(location, apiKey)
   const [selectedDate, setSelectedDate] = useState(null) // null = aujourd'hui
 
-  // Partager la fonction refresh et le compteur avec le parent (une seule fois)
+  // Partager la fonction refresh et le compteur avec le parent
   useEffect(() => {
-    if (tides.refresh && onRefreshReady) {
-      onRefreshReady(tides.refresh, tides.callsRemaining)
-    }
-  }, [])
+    onRefreshReady?.(tides.refresh, tides.callsRemaining)
+  }, [tides.refresh, tides.callsRemaining, onRefreshReady])
 
   return (
     <>
