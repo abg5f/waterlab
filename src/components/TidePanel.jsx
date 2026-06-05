@@ -25,9 +25,9 @@ export default function TidePanel({ data, loading, error, hasKey, selectedDate }
     <div className="panel panel-wide tide-empty-panel">
       <div className="panel-label">🌊 Marées</div>
       <div className="tide-no-key">
-        <span>🔑</span>
-        <p>Ajoutez votre clé <strong>World Tides</strong> dans les paramètres.</p>
-        <p className="hint">Gratuit — 5,000 appels/mois sur worldtides.com</p>
+        <span>⚡</span>
+        <p><strong>Open-Meteo</strong> — Marées gratuites, illimitées</p>
+        <p className="hint">Aucune clé requise, fonctionne automatiquement!</p>
       </div>
     </div>
   )

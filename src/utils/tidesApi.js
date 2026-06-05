@@ -1,23 +1,48 @@
 export async function fetchTides(lat, lng, apiKey, start, end) {
-  // World Tides API: https://www.worldtides.com/api/v3/predictions
-  // Duration en secondes = nombre de secondes à partir du timestamp start
-  const duration = Math.ceil((end - start) / 1000)
-  const startTimestamp = Math.floor(start.getTime() / 1000)
+  // Open-Meteo Maritime API: Gratuit, mondial, pas de clé requise
+  // Récupère les prédictions de marées
+  const startDate = start.toISOString().split('T')[0]
+  const endDate = end.toISOString().split('T')[0]
 
-  const url = `https://www.worldtides.com/api/v3/predictions?lon=${lng}&lat=${lat}&key=${apiKey}&start=${startTimestamp}&length=${duration}`
+  const url = `https://marine-api.open-meteo.com/v1/marine?latitude=${lat}&longitude=${lng}&tidal_predictions=true&start_date=${startDate}&end_date=${endDate}&timezone=auto`
 
   const res = await fetch(url)
-  if (!res.ok) throw new Error(`WorldTides: ${res.status}`)
+  if (!res.ok) throw new Error(`MarineAPI: ${res.status}`)
   const json = await res.json()
 
-  if (!json.tides) throw new Error('WorldTides: Invalid response')
+  if (!json.tidal_predictions || !json.tidal_predictions.tidal_height_predictions) {
+    return [] // Pas de données de marées disponibles
+  }
 
-  // Transformer le format WorldTides au format attendu
-  return json.tides.map(tide => ({
-    time: new Date(tide.pt * 1000).toISOString(),
-    type: tide.type === 'High Water' ? 'high' : 'low',
-    height: tide.height
-  }))
+  const predictions = json.tidal_predictions.tidal_height_predictions
+  const times = json.tidal_predictions.time
+
+  // Transformer en format attendu (identifier les hauts et bas)
+  const tides = []
+  for (let i = 0; i < predictions.length; i++) {
+    const prev = i > 0 ? predictions[i - 1] : null
+    const curr = predictions[i]
+    const next = i < predictions.length - 1 ? predictions[i + 1] : null
+
+    if (prev && next) {
+      // Déterminer si c'est un haut ou bas
+      if (curr > prev && curr > next) {
+        tides.push({
+          time: new Date(times[i] + 'Z').toISOString(),
+          type: 'high',
+          height: curr
+        })
+      } else if (curr < prev && curr < next) {
+        tides.push({
+          time: new Date(times[i] + 'Z').toISOString(),
+          type: 'low',
+          height: curr
+        })
+      }
+    }
+  }
+
+  return tides
 }
 
 export function getTidesForDate(tides, date) {

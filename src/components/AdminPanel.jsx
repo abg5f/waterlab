@@ -73,12 +73,9 @@ export default function AdminPanel({ tidesKey, supabaseUrl, supabaseKey, onSave,
         </div>
 
         <section>
-          <h3 className="admin-section-title">🌊 World Tides — Marées</h3>
-          <label>
-            Clé API
-            <input type="password" value={tidesKeyInput} onChange={e => setTidesKeyInput(e.target.value)} placeholder="Clé World Tides" />
-          </label>
-          <p className="hint" style={{ marginTop: 8 }}>Gratuit: 5,000 appels/mois | Inscription: worldtides.com</p>
+          <h3 className="admin-section-title">🌊 Open-Meteo Marine — Marées</h3>
+          <p style={{ color: 'var(--green)', fontSize: '13px', marginTop: 8 }}>✓ API gratuite, mondiale, sans clé requise</p>
+          <p className="hint" style={{ marginTop: 8 }}>Les marées se chargent automatiquement. Illimité!</p>
         </section>
 
         <section style={{ marginTop: 16 }}>
