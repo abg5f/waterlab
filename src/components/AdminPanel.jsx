@@ -73,11 +73,12 @@ export default function AdminPanel({ stormglassKey, supabaseUrl, supabaseKey, on
         </div>
 
         <section>
-          <h3 className="admin-section-title">🌊 Stormglass — Marées</h3>
+          <h3 className="admin-section-title">🌊 World Tides — Marées</h3>
           <label>
             Clé API
-            <input type="password" value={sgKey} onChange={e => setSgKey(e.target.value)} placeholder="Clé Stormglass" />
+            <input type="password" value={sgKey} onChange={e => setSgKey(e.target.value)} placeholder="Clé World Tides" />
           </label>
+          <p className="hint" style={{ marginTop: 8 }}>Gratuit: 5,000 appels/mois | Inscription: worldtides.com</p>
         </section>
 
         <section style={{ marginTop: 16 }}>
