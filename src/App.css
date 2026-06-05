@@ -251,6 +251,31 @@ body { font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif
   border-left:2px solid var(--gold); padding-left:8px; margin-top:6px; opacity:0.85;
 }
 
+/* ── « Comment ça marche » ─────────────────────────────── */
+.hiw { display:flex; flex-direction:column; gap:14px; }
+.hiw-intro { font-size:13px; line-height:1.6; color:var(--text2); }
+.hiw-intro strong { color:var(--text); }
+.hiw-factor { background:var(--card2); border:1px solid var(--border); border-radius:var(--r-sm); padding:14px; }
+.hiw-factor.hiw-total { border-color:var(--border2); background:linear-gradient(135deg,var(--card) 0%,var(--card2) 100%); }
+.hiw-factor-head { display:flex; align-items:center; gap:8px; margin-bottom:10px; }
+.hiw-factor-icon { font-size:20px; }
+.hiw-factor-head h4 { font-size:14px; font-weight:700; color:var(--text); flex:1; }
+.hiw-pts { font-size:11px; font-weight:700; color:var(--teal); background:rgba(0,196,212,0.1); border-radius:20px; padding:3px 10px; white-space:nowrap; }
+.hiw-why { font-size:12.5px; line-height:1.6; color:var(--text2); margin-bottom:10px; }
+.hiw-why strong { color:var(--text); }
+.hiw-rules { list-style:none; display:flex; flex-direction:column; gap:6px; }
+.hiw-rules li { display:flex; align-items:center; gap:8px; font-size:12.5px; color:var(--text2); }
+.hiw-badge { flex-shrink:0; min-width:30px; text-align:center; font-size:12px; font-weight:700; border-radius:5px; padding:2px 6px; }
+.hiw-badge.good { background:rgba(46,204,113,0.15); color:var(--green); }
+.hiw-badge.mid  { background:rgba(240,192,64,0.15); color:var(--gold); }
+.hiw-badge.low  { background:rgba(122,168,204,0.12); color:var(--text2); }
+.hiw-cf { font-size:11px; border-radius:4px; padding:1px 7px; font-weight:600; }
+.hiw-stars-table { display:flex; flex-direction:column; gap:8px; margin-top:4px; }
+.hiw-star-row { display:flex; align-items:center; gap:10px; }
+.hiw-star-thr { font-size:12px; color:var(--text2); min-width:120px; }
+.hiw-star-lbl { font-size:12.5px; font-weight:600; }
+.hiw-disclaimer { font-size:11.5px; line-height:1.6; color:var(--text3); background:var(--bg2); border-radius:var(--r-sm); padding:12px; border:1px dashed var(--border2); }
+
 /* ── Calendar ──────────────────────────────────────────── */
 .calendar-section { background:var(--card); border:1px solid var(--border); border-radius:var(--r); padding:16px; }
 .cal-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:14px; }
