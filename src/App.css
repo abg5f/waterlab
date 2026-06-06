@@ -421,3 +421,75 @@ body { font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif
 .loc-check  { font-size:18px; color:var(--green); }
 .loc-cname  { font-size:14px; font-weight:600; }
 .loc-ccoords { font-size:12px; color:var(--text2); margin-top:2px; }
+
+/* ═══════════════════════════════════════════════════════════
+   PWA MOBILE — Responsive, safe areas, touch targets
+   ═══════════════════════════════════════════════════════════ */
+
+/* Supprime le délai 300 ms du double-tap sur tous les contrôles */
+button, a, [role="button"], [role="menuitem"],
+input, select, textarea, label { touch-action: manipulation; }
+
+/* Bloque le rubber-band global ; autorisé dans les zones scrollables */
+body   { overscroll-behavior: none; }
+.modal { overscroll-behavior-y: contain; }
+
+/* iOS : empêche le zoom automatique du texte en paysage */
+html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
+
+/* ── Safe-area insets — notch iPhone, barre Android ────── */
+.app-header {
+  padding-top: max(14px, calc(14px + env(safe-area-inset-top, 0px)));
+  padding-left:  max(16px, calc(16px + env(safe-area-inset-left,  0px)));
+  padding-right: max(16px, calc(16px + env(safe-area-inset-right, 0px)));
+}
+.main-content {
+  padding-bottom: max(32px, calc(32px + env(safe-area-inset-bottom, 0px)));
+}
+/* Modale : évite que le contenu passe sous la barre d'accueil */
+.modal {
+  padding-bottom: max(20px, calc(20px + env(safe-area-inset-bottom, 0px)));
+}
+
+/* ── Cibles tactiles ≥ 44 px (Apple HIG / WCAG 2.5.5) ─── */
+@media (pointer: coarse) {
+  .burger-btn   { min-width:44px; min-height:44px; }
+  .burger-close {
+    min-width:44px; min-height:44px;
+    display:flex; align-items:center; justify-content:center;
+  }
+  .modal-close  {
+    min-width:44px; min-height:44px;
+    display:flex; align-items:center; justify-content:center;
+  }
+  .cal-nav      { width:44px; height:44px; font-size:20px; }
+  .header-location { padding:8px 14px; min-height:44px; }
+  .cal-tab      { padding:11px 8px; }
+  .burger-item  { padding:15px 14px; }
+  .cal-cell     { min-height:66px; }
+  /* Dropdown localisation : items plus hauts */
+  .loc-dropdown li { padding:13px 14px; }
+}
+
+/* ── Très petits écrans (≤ 360 px — ex: iPhone SE 1re gen, Galaxy A) */
+@media (max-width:360px) {
+  .main-content     { padding:8px 8px 32px; }
+  .header-title     { font-size:15px; }
+  .score-label      { font-size:16px; }
+  .stars-lg .star   { font-size:24px; }
+  .cal-cell         { min-height:56px; padding:4px 1px; gap:1px; }
+  .cal-num          { font-size:11px; }
+  .cal-coeff        { font-size:8px; padding:1px 3px; }
+  .cal-moon         { font-size:10px; }
+  .panel            { padding:12px; }
+  .calendar-section { padding:12px; }
+  .score-banner     { padding:12px 14px; }
+}
+
+/* ── Paysage mobile (hauteur < 500 px) ──────────────────── */
+@media (max-height:500px) and (orientation:landscape) {
+  .moon-icon    { font-size:32px; margin:4px 0; }
+  .score-banner { padding:10px 14px; }
+  .cal-cell     { min-height:48px; }
+  .app-header   { padding-top:10px; padding-bottom:10px; }
+}
