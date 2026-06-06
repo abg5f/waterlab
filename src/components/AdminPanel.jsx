@@ -1,10 +1,12 @@
 import { useState } from 'react'
-import { checkPin, savePin, hasPinStored } from '../utils/pin'
+import { checkPin, savePin } from '../utils/pin'
 
 export default function AdminPanel({ stormglassKey, supabaseUrl, supabaseKey, onSave, onClose, sessionUnlocked, onSessionUnlock, tidesRefresh, callsRemaining }) {
   const [pinInput,   setPinInput]   = useState('')
   const [pinError,   setPinError]   = useState('')
-  const [view,       setView]       = useState(sessionUnlocked ? 'panel' : (hasPinStored() ? 'lock' : 'panel'))
+  // Espace toujours protégé : on exige le mot de passe (défaut 0000) à chaque
+  // ouverture, sauf s'il a déjà été déverrouillé pendant la session.
+  const [view,       setView]       = useState(sessionUnlocked ? 'panel' : 'lock')
 
   // Champs API
   const [sgKey, setSgKey] = useState(stormglassKey)
