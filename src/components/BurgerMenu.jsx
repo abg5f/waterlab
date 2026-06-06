@@ -50,6 +50,10 @@ export default function BurgerMenu({ items = [] }) {
                 </button>
               ))}
             </div>
+
+            <div className="burger-footer">
+              <span>Créé par <strong>@poloduf_fishing</strong></span>
+            </div>
           </nav>
         </>
       )}

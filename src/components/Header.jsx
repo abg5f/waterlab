@@ -25,8 +25,8 @@ export default function Header({ location, onLocationEdit, onAdminAccess, onHowI
       <div className="header-left">
         <BurgerMenu
           items={[
-            { label: 'Paramètres', icon: '⚙️', onClick: onAdminAccess },
             { label: 'Comment ça marche', icon: '💡', onClick: onHowItWorks },
+            { label: 'Paramètres', icon: '⚙️', onClick: onAdminAccess },
           ]}
         />
         <div className="header-brand" onClick={handleLogoTap} style={{ cursor: 'default', userSelect: 'none' }}>
