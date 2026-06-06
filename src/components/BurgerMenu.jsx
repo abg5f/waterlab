@@ -52,7 +52,16 @@ export default function BurgerMenu({ items = [] }) {
             </div>
 
             <div className="burger-footer">
-              <span>Créé par <strong>@poloduf_fishing</strong></span>
+              <span>Créé par{' '}
+                <a
+                  href="https://www.instagram.com/poloduf_fishing/"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="burger-credit"
+                >
+                  @poloduf_fishing
+                </a>
+              </span>
             </div>
           </nav>
         </>
