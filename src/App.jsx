@@ -94,7 +94,7 @@ function AppShell({
       />
 
       <main className="main-content">
-        <ScoreBanner tides={tides} weather={weather} />
+        <ScoreBanner tides={tides} weather={weather} selectedDate={selectedDate} />
         <div className="panels-row">
           <MoonPanel location={location} weather={weather} selectedDate={selectedDate} />
           <TidePanel
@@ -102,7 +102,7 @@ function AppShell({
             hasKey={!!apiKey}
             selectedDate={selectedDate}
           />
-          <SolunarPanel location={location} />
+          <SolunarPanel location={location} selectedDate={selectedDate} />
         </div>
         <FishingCalendar
           weather={weather} tides={tides.data} location={location}

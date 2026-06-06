@@ -1,13 +1,23 @@
 import { getSolunarPeriods, formatSolunarTime, getCurrentPeriod } from '../utils/solunar'
 
-export default function SolunarPanel({ location }) {
-  const today   = new Date()
-  const periods = getSolunarPeriods(today, location.lat, location.lng)
-  const active  = getCurrentPeriod(periods)
+export default function SolunarPanel({ location, selectedDate }) {
+  const today       = new Date()
+  const displayDate = selectedDate || today
+  const isToday     = displayDate.toDateString() === today.toDateString()
+  const periods     = getSolunarPeriods(displayDate, location.lat, location.lng)
+  // "Période active" n'a de sens que pour aujourd'hui
+  const active      = isToday ? getCurrentPeriod(periods) : null
 
   return (
     <div className="panel">
-      <div className="panel-label">🐟 Solunaire</div>
+      <div className="panel-label">
+        🐟 Solunaire
+        {!isToday && (
+          <span className="panel-date-badge">
+            {displayDate.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })}
+          </span>
+        )}
+      </div>
       {active && (
         <div className="solunar-active">
           <span className="active-dot" />
@@ -15,7 +25,7 @@ export default function SolunarPanel({ location }) {
         </div>
       )}
       <div className="solunar-list">
-        {periods.length === 0 && <p className="hint">Aucune période calculée pour aujourd'hui.</p>}
+        {periods.length === 0 && <p className="hint">Aucune période calculée pour ce jour.</p>}
         {periods.map((p, i) => {
           const isNow = active === p
           const start = new Date(p.time.getTime() - (p.duration / 2) * 60000)
