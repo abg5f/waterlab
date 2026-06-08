@@ -19,6 +19,8 @@ const DAYS   = ['Lu','Ma','Me','Je','Ve','Sa','Di']
 /* ── Modal favori ─────────────────────────────────────── */
 function FavoriteModal({ date, dayTides, existing, conditions, onSave, onDelete, onClose }) {
   const [comment,    setComment]    = useState(existing?.comment    || '')
+  const [spot,       setSpot]       = useState(existing?.spot       || '')
+  const [species,    setSpecies]    = useState(existing?.species    || '')
   const [timeOfDay,  setTimeOfDay]  = useState(existing?.time_of_day || 'morning')
 
   const tidesInPeriod = getTidesInPeriod(dayTides, timeOfDay)
@@ -31,6 +33,8 @@ function FavoriteModal({ date, dayTides, existing, conditions, onSave, onDelete,
   const handleSave = () => {
     onSave({
       comment,
+      spot:    spot.trim()    || null,
+      species: species.trim() || null,
       time_of_day:      timeOfDay,
       tide_period_type: dominantTide?.type || null,
       tide_period_hour: dominantTide ? new Date(dominantTide.time).getHours() : null,
@@ -58,6 +62,30 @@ function FavoriteModal({ date, dayTides, existing, conditions, onSave, onDelete,
           )}
           <span className="fav-cond-item">🌡️ {TREND_LABELS[conditions.pressureTrend] ?? '—'}</span>
           <StarRating score={conditions.fishingScore} size="sm" />
+        </div>
+
+        {/* Spot & espèce */}
+        <div className="fav-meta-row">
+          <label className="fav-field-label">
+            📍 Spot
+            <input
+              type="text"
+              className="fav-text-input"
+              value={spot}
+              onChange={e => setSpot(e.target.value)}
+              placeholder="Ex : Canal du François"
+            />
+          </label>
+          <label className="fav-field-label">
+            🐟 Espèce
+            <input
+              type="text"
+              className="fav-text-input"
+              value={species}
+              onChange={e => setSpecies(e.target.value)}
+              placeholder="Ex : Tarpon, Snook…"
+            />
+          </label>
         </div>
 
         {/* Créneau */}
@@ -179,6 +207,12 @@ function SimilarDaysPanel({ similarDays }) {
                           <span key={c.key} className="crit-badge">{c.label}</span>
                         ))}
                       </div>
+                      {(ref.favorite.spot || ref.favorite.species) && (
+                        <div className="ref-meta">
+                          {ref.favorite.spot    && <span className="ref-spot">📍 {ref.favorite.spot}</span>}
+                          {ref.favorite.species && <span className="ref-species">🐟 {ref.favorite.species}</span>}
+                        </div>
+                      )}
                       {ref.favorite.comment && (
                         <blockquote className="ref-comment">"{ref.favorite.comment}"</blockquote>
                       )}
@@ -295,6 +329,8 @@ export default function FishingCalendar({ weather, tides, onDateSelect }) {
     upsert({
       date:             date.toISOString().split('T')[0],
       comment:          extra.comment,
+      spot:             extra.spot,
+      species:          extra.species,
       moon_phase:       conditions.moonPhase,
       moon_name:        conditions.moonName,
       coeff_category:   conditions.coeffCategory,
@@ -388,6 +424,12 @@ export default function FishingCalendar({ weather, tides, onDateSelect }) {
                 {favEntry && (
                   <div className="detail-fav-info">
                     <span className="detail-fav-tod">⭐ {TOD_LABELS[favEntry.time_of_day] || '—'}</span>
+                    {(favEntry.spot || favEntry.species) && (
+                      <span className="detail-fav-meta">
+                        {favEntry.spot    && <span className="detail-fav-spot">📍 {favEntry.spot}</span>}
+                        {favEntry.species && <span className="detail-fav-species">🐟 {favEntry.species}</span>}
+                      </span>
+                    )}
                     {favEntry.tide_period_type && (
                       <span className="detail-fav-tide">
                         {favEntry.tide_period_type === 'high' ? '▲ Haute mer' : '▼ Basse mer'}
