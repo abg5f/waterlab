@@ -81,7 +81,7 @@ function AppShell({
 }) {
   const weather = useWeather(location)
   const tides   = useTides(location, apiKey)
-  const { favorites, remove: removeFavorite } = useFavorites()
+  const { favorites, remove: removeFavorite, upsert: upsertFavorite, isFavorite } = useFavorites()
   const [selectedDate,     setSelectedDate]     = useState(null)  // null = aujourd'hui
   const [showHowItWorks,   setShowHowItWorks]   = useState(false)
   const [showSavedSessions, setShowSavedSessions] = useState(false)
@@ -155,6 +155,8 @@ function AppShell({
           weather={weather}
           tides={tides.data}
           onRemove={removeFavorite}
+          onUpsert={upsertFavorite}
+          isFavorite={isFavorite}
           onClose={() => setShowSavedSessions(false)}
         />
       )}

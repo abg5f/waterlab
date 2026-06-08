@@ -1,8 +1,10 @@
 import { useState, useMemo } from 'react'
 import StarRating from './StarRating'
 import PhotoGallery from './PhotoGallery'
+import FavoriteModal from './FavoriteModal'
 import { checkPin, hasPinStored } from '../utils/pin'
 import { buildConditionsGetter } from '../utils/conditions'
+import { saveFavoriteSession } from '../utils/favoriteEntry'
 import {
   compareDays, SIMILARITY_THRESHOLD,
   TREND_LABELS, COEFF_LABELS, TOD_LABELS,
@@ -69,9 +71,11 @@ function SavedSessionCard({ favorite, onClick }) {
 }
 
 /* ── Détail d'une session + jours à venir similaires à CETTE session ── */
-function SavedSessionDetail({ favorite, getConditions, onBack, onRemove, onClose }) {
-  const date    = new Date(favorite.date + 'T12:00:00')
+function SavedSessionDetail({ favorite, getConditions, onBack, onRemove, onUpsert, isFavorite, onClose, onSaved }) {
+  const [editing, setEditing] = useState(false)
+  const date    = useMemo(() => new Date(favorite.date + 'T12:00:00'), [favorite.date])
   const dateStr = date.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })
+  const conditions = useMemo(() => getConditions ? getConditions(date) : null, [getConditions, date])
 
   const similarDays = useMemo(() => {
     if (!getConditions) return []
@@ -166,17 +170,44 @@ function SavedSessionDetail({ favorite, getConditions, onBack, onRemove, onClose
         <button className="btn-delete" type="button" onClick={() => { onRemove(favorite.date); onBack() }}>
           🗑 Supprimer cette session
         </button>
+        <button className="btn-cancel" type="button" onClick={() => setEditing(true)}>
+          ✏️ Modifier
+        </button>
       </div>
+
+      {editing && conditions && (
+        <FavoriteModal
+          date={date}
+          dayTides={conditions.tides}
+          existing={favorite}
+          conditions={conditions}
+          getConditions={getConditions}
+          isFavorite={(dateStr) => (dateStr !== favorite.date ? isFavorite?.(dateStr) : null)}
+          onSave={(payload) => {
+            saveFavoriteSession(date, payload, { upsert: onUpsert, remove: onRemove })
+            onSaved?.(payload.date)
+          }}
+          onDelete={() => { onRemove(favorite.date); onBack() }}
+          onClose={() => setEditing(false)}
+        />
+      )}
     </>
   )
 }
 
 /* ── Panneau principal : liste + détail ───────────────────────── */
-export default function SavedSessionsPanel({ favorites, weather, tides, onRemove, onClose }) {
+export default function SavedSessionsPanel({ favorites, weather, tides, onRemove, onUpsert, isFavorite, onClose }) {
   const [unlocked, setUnlocked] = useState(() => !hasPinStored())
-  const [selected, setSelected] = useState(null)
+  const [selectedDate, setSelectedDate] = useState(null)
 
   const getConditions = useMemo(() => buildConditionsGetter(tides, weather?.data), [tides, weather?.data])
+
+  // Dérivé de la liste live `favorites` (et non d'une copie figée) afin de
+  // rester synchronisé après une modification (notamment un changement de date).
+  const selected = useMemo(
+    () => (selectedDate ? favorites?.find(f => f.date === selectedDate) || null : null),
+    [favorites, selectedDate]
+  )
 
   if (!unlocked) {
     return <SavedPinLock onSuccess={() => setUnlocked(true)} onClose={onClose} />
@@ -189,8 +220,11 @@ export default function SavedSessionsPanel({ favorites, weather, tides, onRemove
           <SavedSessionDetail
             favorite={selected}
             getConditions={getConditions}
-            onBack={() => setSelected(null)}
-            onRemove={onRemove}
+            onBack={() => setSelectedDate(null)}
+            onRemove={(dateStr) => { onRemove(dateStr); if (dateStr === selectedDate) setSelectedDate(null) }}
+            onUpsert={onUpsert}
+            isFavorite={isFavorite}
+            onSaved={(newDateStr) => setSelectedDate(newDateStr)}
             onClose={onClose}
           />
         ) : (
@@ -206,7 +240,7 @@ export default function SavedSessionsPanel({ favorites, weather, tides, onRemove
             ) : (
               <div className="saved-list">
                 {favorites.map(fav => (
-                  <SavedSessionCard key={fav.date} favorite={fav} onClick={() => setSelected(fav)} />
+                  <SavedSessionCard key={fav.date} favorite={fav} onClick={() => setSelectedDate(fav.date)} />
                 ))}
               </div>
             )}
