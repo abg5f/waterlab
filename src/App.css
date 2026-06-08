@@ -207,6 +207,7 @@ body { font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif
   outline:none; transition:border-color 0.15s; width:100%;
 }
 .fav-text-input:focus { border-color:var(--teal); }
+.fav-text-input[type="date"] { color-scheme: dark; }
 @media(max-width:420px){ .fav-meta-row { flex-direction:column; gap:10px; } }
 
 /* Affichage spot/espèce dans le détail jour + jours similaires */

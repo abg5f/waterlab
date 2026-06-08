@@ -20,22 +20,42 @@ const MONTHS = ['Janvier','Février','Mars','Avril','Mai','Juin','Juillet','Aoû
 const DAYS   = ['Lu','Ma','Me','Je','Ve','Sa','Di']
 
 /* ── Modal favori ─────────────────────────────────────── */
-function FavoriteModal({ date, dayTides, existing, conditions, onSave, onDelete, onClose }) {
+function FavoriteModal({ date, dayTides, existing, conditions, getConditions, isFavorite, onSave, onDelete, onClose }) {
+  const initialDateKey = date.toISOString().split('T')[0]
+
   const [comment,    setComment]    = useState(existing?.comment    || '')
   const [spot,       setSpot]       = useState(existing?.spot       || '')
   const [species,    setSpecies]    = useState(existing?.species    || '')
   const [timeOfDay,  setTimeOfDay]  = useState(existing?.time_of_day || 'morning')
   const [photos,     setPhotos]     = useState(existing?.photos     || [])
+  const [dateInput,  setDateInput]  = useState(initialDateKey)
+  const [dateError,  setDateError]  = useState('')
   const [uploading,  setUploading]  = useState(false)
   const [photoError, setPhotoError] = useState('')
   const fileInputRef = useRef(null)
   const supabase     = useSupabase()
-  const dateKey      = date.toISOString().split('T')[0]
 
-  const tidesInPeriod = getTidesInPeriod(dayTides, timeOfDay)
+  const dateChanged = dateInput !== initialDateKey
+
+  // Si la date a été corrigée, on recalcule lune/coefficient/marées pour la nouvelle date
+  const liveDate = useMemo(() => {
+    if (!dateChanged) return date
+    const [y, m, d] = dateInput.split('-').map(Number)
+    return (y && m && d) ? new Date(y, m - 1, d, 12) : date
+  }, [dateChanged, dateInput, date])
+
+  const liveConditions = useMemo(() => {
+    if (!dateChanged || !getConditions) return conditions
+    return getConditions(liveDate)
+  }, [dateChanged, getConditions, liveDate, conditions])
+
+  const liveDayTides = liveConditions.tides ?? dayTides
+  const dateKey      = liveDate.toISOString().split('T')[0]
+
+  const tidesInPeriod = getTidesInPeriod(liveDayTides, timeOfDay)
   const dominantTide  = getDominantTide([...tidesInPeriod])
 
-  const dateStr = date.toLocaleDateString('fr-FR', {
+  const dateStr = liveDate.toLocaleDateString('fr-FR', {
     weekday: 'long', day: 'numeric', month: 'long', year: 'numeric',
   })
 
@@ -66,7 +86,15 @@ function FavoriteModal({ date, dayTides, existing, conditions, onSave, onDelete,
   }
 
   const handleSave = () => {
+    setDateError('')
+    if (dateChanged) {
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(dateInput)) { setDateError('Date invalide.'); return }
+      if (isFavorite?.(dateInput)) { setDateError('Une autre session est déjà enregistrée à cette date.'); return }
+    }
     onSave({
+      date:        dateInput,
+      dateChanged,
+      conditions:  liveConditions,
       comment,
       spot:    spot.trim()    || null,
       species: species.trim() || null,
@@ -88,17 +116,35 @@ function FavoriteModal({ date, dayTides, existing, conditions, onSave, onDelete,
 
         <p className="fav-date">{dateStr}</p>
 
-        {/* Résumé des conditions */}
+        {existing && (
+          <label className="fav-field-label" style={{ marginBottom: 14 }}>
+            📅 Corriger la date (en cas d'erreur de saisie)
+            <input
+              type="date"
+              className="fav-text-input"
+              value={dateInput}
+              onChange={e => { setDateInput(e.target.value); setDateError('') }}
+            />
+          </label>
+        )}
+        {dateError && <p className="pin-error" style={{ marginTop: -8, marginBottom: 12 }}>{dateError}</p>}
+
+        {/* Résumé des conditions (recalculées si la date est corrigée) */}
         <div className="fav-conditions">
-          <span className="fav-cond-item">🌙 {conditions.moonName}</span>
-          {conditions.coeffCategory && (
-            <span className={`fav-cond-item coeff-pill ${conditions.coeffCategory}`}>
-              {COEFF_LABELS[conditions.coeffCategory]} ({conditions.tideCoeff ?? '—'})
+          <span className="fav-cond-item">🌙 {liveConditions.moonName}</span>
+          {liveConditions.coeffCategory && (
+            <span className={`fav-cond-item coeff-pill ${liveConditions.coeffCategory}`}>
+              {COEFF_LABELS[liveConditions.coeffCategory]} ({liveConditions.tideCoeff ?? '—'})
             </span>
           )}
-          <span className="fav-cond-item">🌡️ {TREND_LABELS[conditions.pressureTrend] ?? '—'}</span>
-          <StarRating score={conditions.fishingScore} size="sm" />
+          <span className="fav-cond-item">🌡️ {TREND_LABELS[liveConditions.pressureTrend] ?? '—'}</span>
+          <StarRating score={liveConditions.fishingScore} size="sm" />
         </div>
+        {dateChanged && (
+          <p className="hint" style={{ marginTop: -10, marginBottom: 14 }}>
+            ℹ️ Conditions recalculées pour la nouvelle date (la pression atmosphérique n'étant pas connue pour les dates passées, sa tendance est neutre par défaut).
+          </p>
+        )}
 
         {/* Spot & espèce */}
         <div className="fav-meta-row">
@@ -390,22 +436,31 @@ export default function FishingCalendar({ weather, tides, onDateSelect }) {
     setModal({ date, conditions: cond, dayTides: cond.tides, existing: isFavorite(date) })
   }
 
-  const saveFavorite = (date, conditions, extra) => {
+  const saveFavorite = (originalDate, payload) => {
+    const oldDateStr = originalDate.toISOString().split('T')[0]
+    const cond       = payload.conditions
+
+    // Date corrigée → on déplace le favori (suppression de l'ancienne entrée,
+    // recréation à la nouvelle date avec les conditions recalculées)
+    if (payload.dateChanged && payload.date !== oldDateStr) {
+      remove(oldDateStr)
+    }
+
     upsert({
-      date:             date.toISOString().split('T')[0],
-      comment:          extra.comment,
-      spot:             extra.spot,
-      species:          extra.species,
-      moon_phase:       conditions.moonPhase,
-      moon_name:        conditions.moonName,
-      coeff_category:   conditions.coeffCategory,
-      tide_coeff:       conditions.tideCoeff,
-      pressure_trend:   conditions.pressureTrend,
-      fishing_score:    conditions.fishingScore,
-      time_of_day:      extra.time_of_day,
-      tide_period_type: extra.tide_period_type,
-      tide_period_hour: extra.tide_period_hour,
-      photos:           extra.photos?.length ? extra.photos : [],
+      date:             payload.date,
+      comment:          payload.comment,
+      spot:             payload.spot,
+      species:          payload.species,
+      moon_phase:       cond.moonPhase,
+      moon_name:        cond.moonName,
+      coeff_category:   cond.coeffCategory,
+      tide_coeff:       cond.tideCoeff,
+      pressure_trend:   cond.pressureTrend,
+      fishing_score:    cond.fishingScore,
+      time_of_day:      payload.time_of_day,
+      tide_period_type: payload.tide_period_type,
+      tide_period_hour: payload.tide_period_hour,
+      photos:           payload.photos?.length ? payload.photos : [],
     })
   }
 
@@ -531,7 +586,12 @@ export default function FishingCalendar({ weather, tides, onDateSelect }) {
           dayTides={modal.dayTides}
           existing={modal.existing}
           conditions={modal.conditions}
-          onSave={(extra) => saveFavorite(modal.date, modal.conditions, extra)}
+          getConditions={getConditions}
+          isFavorite={(dateStr) => {
+            const original = modal.date.toISOString().split('T')[0]
+            return dateStr !== original ? isFavorite(dateStr) : null
+          }}
+          onSave={(payload) => saveFavorite(modal.date, payload)}
           onDelete={() => remove(modal.date.toISOString().split('T')[0])}
           onClose={() => setModal(null)}
         />
