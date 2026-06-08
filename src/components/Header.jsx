@@ -1,7 +1,7 @@
 import { useRef } from 'react'
 import BurgerMenu from './BurgerMenu'
 
-export default function Header({ location, onLocationEdit, onAdminAccess, onHowItWorks, supabaseConnected, adminUnlocked }) {
+export default function Header({ location, onLocationEdit, onAdminAccess, onHowItWorks, onSavedSessions, supabaseConnected, adminUnlocked }) {
   const tapCount = useRef(0)
   const tapTimer = useRef(null)
 
@@ -26,6 +26,7 @@ export default function Header({ location, onLocationEdit, onAdminAccess, onHowI
         <BurgerMenu
           items={[
             { label: 'Comment ça marche', icon: '💡', onClick: onHowItWorks },
+            { label: 'Sessions enregistrées', icon: '⭐', onClick: onSavedSessions },
             { label: 'Paramètres', icon: '⚙️', onClick: onAdminAccess },
           ]}
         />

@@ -9,8 +9,10 @@ import MoonPanel from './components/MoonPanel'
 import SolunarPanel from './components/SolunarPanel'
 import FishingCalendar from './components/FishingCalendar'
 import HowItWorks from './components/HowItWorks'
+import SavedSessionsPanel from './components/SavedSessions'
 import { useTides } from './hooks/useTides'
 import { useWeather } from './hooks/useWeather'
+import { useFavorites } from './hooks/useFavorites'
 
 const DEFAULT_LOC = { lat: 14.6833, lng: -60.9167, name: 'Le Robert, Martinique' }
 const load = (key, fb) => { try { return JSON.parse(localStorage.getItem(key)) || fb } catch { return fb } }
@@ -79,8 +81,10 @@ function AppShell({
 }) {
   const weather = useWeather(location)
   const tides   = useTides(location, apiKey)
-  const [selectedDate,   setSelectedDate]   = useState(null)  // null = aujourd'hui
-  const [showHowItWorks, setShowHowItWorks] = useState(false)
+  const { favorites, remove: removeFavorite } = useFavorites()
+  const [selectedDate,     setSelectedDate]     = useState(null)  // null = aujourd'hui
+  const [showHowItWorks,   setShowHowItWorks]   = useState(false)
+  const [showSavedSessions, setShowSavedSessions] = useState(false)
 
   return (
     <div className="app">
@@ -89,6 +93,7 @@ function AppShell({
         onLocationEdit={() => setShowLocation(true)}
         onAdminAccess={() => setShowAdmin(true)}
         onHowItWorks={() => setShowHowItWorks(true)}
+        onSavedSessions={() => setShowSavedSessions(true)}
         supabaseConnected={supabaseConnected}
         adminUnlocked={adminUnlocked}
       />
@@ -142,6 +147,16 @@ function AppShell({
             <HowItWorks />
           </div>
         </div>
+      )}
+
+      {showSavedSessions && (
+        <SavedSessionsPanel
+          favorites={favorites}
+          weather={weather}
+          tides={tides.data}
+          onRemove={removeFavorite}
+          onClose={() => setShowSavedSessions(false)}
+        />
       )}
     </div>
   )
