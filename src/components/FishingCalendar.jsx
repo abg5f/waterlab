@@ -24,8 +24,8 @@ function SimilarDaysPanel({ similarDays }) {
 
   if (!similarDays.length) return (
     <div className="similar-empty">
-      <p>🔍 Aucun jour similaire dans les 16 prochains jours.</p>
-      <p className="hint">Marquez des journées favorites dans le calendrier pour activer cette fonctionnalité.</p>
+      <p>🔍 Aucun jour similaire ce mois-ci.</p>
+      <p className="hint">Marquez des journées favorites dans le calendrier pour activer cette fonctionnalité, ou navigue vers un autre mois.</p>
     </div>
   )
 
@@ -34,7 +34,7 @@ function SimilarDaysPanel({ similarDays }) {
       {similarDays.map((day, i) => {
         const isOpen  = expanded === i
         const bestRef = day.refs[0]
-        const dateStr = day.date.toLocaleDateString('fr-FR', { weekday: 'short', day: 'numeric', month: 'long' })
+        const dateStr = day.date.toLocaleDateString('fr-FR', { weekday: 'short', day: 'numeric', month: 'long', year: 'numeric' })
         return (
           <div key={i} className={`similar-card ${isOpen ? 'open' : ''}`}>
             <div className="similar-card-head" onClick={() => setExpanded(isOpen ? null : i)}>
@@ -309,6 +309,7 @@ export default function FishingCalendar({ weather, tides, onDateSelect }) {
           weather={weather}
           tides={tides}
           getConditions={getConditions}
+          view={view}
         />
       )}
 
@@ -342,21 +343,23 @@ export default function FishingCalendar({ weather, tides, onDateSelect }) {
 }
 
 /* Sous-composant pour accéder à useFavorites sans violer les règles de hooks */
-function SimilarContent({ weather, tides, getConditions }) {
+function SimilarContent({ weather, tides, getConditions, view }) {
   const { favorites } = useFavorites()
-  const today = new Date()
 
   const similarDays = useMemo(() => {
     if (!favorites.length) return []
+    const year  = view.getFullYear()
+    const month = view.getMonth()
+    const last  = new Date(year, month + 1, 0).getDate()
     const candidates = []
-    for (let i = 0; i <= 15; i++) {
-      const d    = new Date(today); d.setDate(today.getDate() + i)
+    for (let day = 1; day <= last; day++) {
+      const d    = new Date(year, month, day, 12)
       const cond = getConditions(d)
       candidates.push({ date: d, ...cond, score: cond.fishingScore })
     }
     return findSimilarDays(favorites, candidates)
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [favorites, tides, weather.data])
+  }, [favorites, tides, weather.data, view])
 
   return <SimilarDaysPanel similarDays={similarDays} />
 }
