@@ -71,3 +71,34 @@ export async function deleteSpotFromDB(supabase, id) {
     await supabase.from('spots').delete().eq('id', id)
   } catch { /* non-bloquant */ }
 }
+
+/* ── Photos de session (Supabase Storage) ──────────────
+   Bucket : session-photos (public en lecture)
+   Chemin : {date}/{timestamp}-{rand}.jpg
+   Stocké dans favorite_days.photos (jsonb) → [{ url, path }]
+──────────────────────────────────────────────────────── */
+
+const PHOTOS_BUCKET = 'session-photos'
+
+export async function uploadSessionPhoto(supabase, dateStr, blob) {
+  if (!supabase) return null
+  try {
+    const path = `${dateStr}/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.jpg`
+    const { error } = await supabase.storage.from(PHOTOS_BUCKET).upload(path, blob, {
+      contentType: 'image/jpeg',
+      upsert: false,
+    })
+    if (error) { console.warn('Supabase photo upload:', error.message); return null }
+    const { data } = supabase.storage.from(PHOTOS_BUCKET).getPublicUrl(path)
+    return { url: data.publicUrl, path }
+  } catch (e) {
+    console.warn('Photo upload échoué :', e.message)
+    return null
+  }
+}
+
+export async function deleteSessionPhoto(supabase, path) {
+  if (!supabase || !path) return
+  try { await supabase.storage.from(PHOTOS_BUCKET).remove([path]) }
+  catch { /* non-bloquant */ }
+}

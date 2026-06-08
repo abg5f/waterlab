@@ -1,6 +1,8 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useRef } from 'react'
 import StarRating from './StarRating'
+import PhotoGallery from './PhotoGallery'
 import { getMoonData } from '../utils/moonPhase'
+import { resizeImage, MAX_SESSION_PHOTOS } from '../utils/imageResize'
 import { getFishingScore, getCoeffThresholds } from '../utils/scores'
 import { calculateCoefficients, getCoefficientForDate, getTidesForDate, formatTime, coeffLabel, coeffClass } from '../utils/tidesApi'
 import { getDailyForDate } from '../utils/weatherApi'
@@ -12,6 +14,7 @@ import {
 } from '../utils/similarity'
 import { checkPin, hasPinStored } from '../utils/pin'
 import { useFavorites } from '../hooks/useFavorites'
+import { useSupabase, uploadSessionPhoto, deleteSessionPhoto } from '../lib/supabase'
 
 const MONTHS = ['Janvier','Février','Mars','Avril','Mai','Juin','Juillet','Août','Septembre','Octobre','Novembre','Décembre']
 const DAYS   = ['Lu','Ma','Me','Je','Ve','Sa','Di']
@@ -22,6 +25,12 @@ function FavoriteModal({ date, dayTides, existing, conditions, onSave, onDelete,
   const [spot,       setSpot]       = useState(existing?.spot       || '')
   const [species,    setSpecies]    = useState(existing?.species    || '')
   const [timeOfDay,  setTimeOfDay]  = useState(existing?.time_of_day || 'morning')
+  const [photos,     setPhotos]     = useState(existing?.photos     || [])
+  const [uploading,  setUploading]  = useState(false)
+  const [photoError, setPhotoError] = useState('')
+  const fileInputRef = useRef(null)
+  const supabase     = useSupabase()
+  const dateKey      = date.toISOString().split('T')[0]
 
   const tidesInPeriod = getTidesInPeriod(dayTides, timeOfDay)
   const dominantTide  = getDominantTide([...tidesInPeriod])
@@ -29,6 +38,32 @@ function FavoriteModal({ date, dayTides, existing, conditions, onSave, onDelete,
   const dateStr = date.toLocaleDateString('fr-FR', {
     weekday: 'long', day: 'numeric', month: 'long', year: 'numeric',
   })
+
+  const handleFiles = async (fileList) => {
+    setPhotoError('')
+    const room = MAX_SESSION_PHOTOS - photos.length
+    if (room <= 0) { setPhotoError(`Maximum ${MAX_SESSION_PHOTOS} photos par session.`); return }
+    const files = Array.from(fileList).slice(0, room)
+    if (!files.length) return
+    setUploading(true)
+    for (const file of files) {
+      try {
+        const blob   = await resizeImage(file)
+        const result = await uploadSessionPhoto(supabase, dateKey, blob)
+        if (result) setPhotos(prev => [...prev, result])
+        else setPhotoError("Échec de l'envoi d'une photo.")
+      } catch {
+        setPhotoError("Une image n'a pas pu être traitée.")
+      }
+    }
+    setUploading(false)
+  }
+
+  const removePhoto = (idx) => {
+    const photo = photos[idx]
+    setPhotos(prev => prev.filter((_, i) => i !== idx))
+    if (photo?.path) deleteSessionPhoto(supabase, photo.path)
+  }
 
   const handleSave = () => {
     onSave({
@@ -38,6 +73,7 @@ function FavoriteModal({ date, dayTides, existing, conditions, onSave, onDelete,
       time_of_day:      timeOfDay,
       tide_period_type: dominantTide?.type || null,
       tide_period_hour: dominantTide ? new Date(dominantTide.time).getHours() : null,
+      photos,
     })
     onClose()
   }
@@ -87,6 +123,35 @@ function FavoriteModal({ date, dayTides, existing, conditions, onSave, onDelete,
             />
           </label>
         </div>
+
+        {/* Photos */}
+        <div className="fav-section-label">📷 Photos ({photos.length}/{MAX_SESSION_PHOTOS})</div>
+        <div className="fav-photos">
+          {photos.map((p, i) => (
+            <div key={p.path || p.url || i} className="fav-photo-thumb">
+              <img src={p.url} alt="" />
+              <button
+                type="button" className="fav-photo-remove"
+                onClick={() => removePhoto(i)} aria-label="Supprimer la photo"
+              >✕</button>
+            </div>
+          ))}
+          {photos.length < MAX_SESSION_PHOTOS && (
+            <button
+              type="button" className="fav-photo-add"
+              onClick={() => fileInputRef.current?.click()}
+              disabled={uploading}
+            >
+              {uploading ? '…' : '+'}
+            </button>
+          )}
+          <input
+            ref={fileInputRef} type="file" accept="image/*" multiple
+            style={{ display: 'none' }}
+            onChange={e => { handleFiles(e.target.files); e.target.value = '' }}
+          />
+        </div>
+        {photoError && <p className="pin-error">{photoError}</p>}
 
         {/* Créneau */}
         <div className="fav-section-label">Quand c'était bon ?</div>
@@ -340,6 +405,7 @@ export default function FishingCalendar({ weather, tides, onDateSelect }) {
       time_of_day:      extra.time_of_day,
       tide_period_type: extra.tide_period_type,
       tide_period_hour: extra.tide_period_hour,
+      photos:           extra.photos?.length ? extra.photos : [],
     })
   }
 
@@ -437,6 +503,7 @@ export default function FishingCalendar({ weather, tides, onDateSelect }) {
                       </span>
                     )}
                     {favEntry.comment && <blockquote className="detail-fav-comment">"{favEntry.comment}"</blockquote>}
+                    {favEntry.photos?.length > 0 && <PhotoGallery photos={favEntry.photos} size="sm" />}
                   </div>
                 )}
                 <button className="btn-fav-toggle" onClick={() => openModal(sel)}>

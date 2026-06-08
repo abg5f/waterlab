@@ -1,5 +1,6 @@
 import { useState, useMemo } from 'react'
 import StarRating from './StarRating'
+import PhotoGallery from './PhotoGallery'
 import { checkPin, hasPinStored } from '../utils/pin'
 import { buildConditionsGetter } from '../utils/conditions'
 import {
@@ -53,11 +54,12 @@ function SavedSessionCard({ favorite, onClick }) {
         <span className="saved-card-date">{dateStr}</span>
         <StarRating score={favorite.fishing_score} size="xs" />
       </div>
-      {(favorite.spot || favorite.species || favorite.moon_name) && (
+      {(favorite.spot || favorite.species || favorite.moon_name || favorite.photos?.length > 0) && (
         <div className="saved-card-meta">
           {favorite.spot       && <span className="saved-tag">📍 {favorite.spot}</span>}
           {favorite.species    && <span className="saved-tag">🐟 {favorite.species}</span>}
           {favorite.moon_name  && <span className="saved-tag">🌙 {favorite.moon_name}</span>}
+          {favorite.photos?.length > 0 && <span className="saved-tag">📷 {favorite.photos.length}</span>}
         </div>
       )}
       {favorite.comment && <p className="saved-card-comment">"{favorite.comment}"</p>}
@@ -124,6 +126,13 @@ function SavedSessionDetail({ favorite, getConditions, onBack, onRemove, onClose
 
       {favorite.comment && (
         <blockquote className="detail-fav-comment">"{favorite.comment}"</blockquote>
+      )}
+
+      {favorite.photos?.length > 0 && (
+        <>
+          <div className="fav-section-label">📷 Photos</div>
+          <PhotoGallery photos={favorite.photos} size="md" />
+        </>
       )}
 
       <div className="fav-section-label" style={{ marginTop: 18 }}>🔮 Jours à venir similaires à cette session</div>
