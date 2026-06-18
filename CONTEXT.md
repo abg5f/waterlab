@@ -1,6 +1,6 @@
 # Context — WaterLab
 
-> Dernière mise à jour : 2026-06-16
+> Dernière mise à jour : 2026-06-17
 
 ## État actuel
 
@@ -12,6 +12,7 @@
 - Supabase + localStorage fallback pour `favorite_days`, `tide_cache`, `spots`
 - PIN de protection pour l'accès aux favoris/sessions
 - **GitHub Actions keep-alive** en place : ping Supabase chaque lundi 8h UTC → évite la mise en pause automatique du plan gratuit
+- **Nouveau design system Aureolin/Bistre** appliqué : fond jaune `#fbe311`, header bistre `#261606`, cartes blanches, étoiles bistre, boutons pill
 
 ## Décisions prises
 
@@ -22,22 +23,27 @@
 - App sans Supabase Auth — toutes les politiques RLS utilisent `TO anon USING (true) WITH CHECK (true)` (usage personnel)
 - Clé API Supabase stockée dans `localStorage` (`wl_supabase_key`) via Admin panel — **prioritaire sur la variable d'environnement Vercel** → si les clés sont régénérées côté Supabase, il faut recoller la nouvelle clé dans Paramètres de l'app
 - Keep-alive via GitHub Actions (pas de solution serveur) — le refresh hebdomadaire des marées dans `useTides.js` est client-side uniquement (ne suffit pas)
+- **Design system** : CSS pur via variables CSS dans `src/App.css` (pas de Tailwind). Refonte complète via token swap + aliases de compatibilité — aucun composant JSX modifié. Étoiles allumées en `--brand` (bistre) pour contraste sur fond jaune.
 
 ## En cours / TODOs
 
-- Rien en cours — toutes les features demandées cette session sont terminées et déployées
+- Rien en cours — design system Aureolin/Bistre appliqué, app fonctionnelle
 - Piste future : ajouter des sessions favorites pour augmenter le nombre de "Références" dans les jours similaires
+- Piste future : déployer le nouveau design sur Vercel (pas encore pushé/déployé)
 
 ## Problèmes connus
 
 - Si la clé anon Supabase est régénérée dans le dashboard, la valeur en `localStorage` du navigateur devient périmée → erreur silencieuse `401` sur `favorite_days` + `400 signature verification failed` sur Storage. Fix : Paramètres → recoller la clé `anon` actuelle depuis Project Settings → API.
 - La pression atmosphérique n'est pas disponible pour les dates passées → tendance "neutre" par défaut dans les conditions recalculées lors d'une correction de date.
 - Supabase plan gratuit : projet mis en pause après 7 jours d'inactivité → résolu par le GitHub Actions keep-alive
+- "Aucune marée disponible" = comportement normal si le cache Supabase est vide. Fix : Paramètres → entrer clé StormGlass → "Rafraîchir les marées". Pas lié au design.
 
 ## Fichiers clés
 
 | Fichier | Rôle |
 |---|---|
+| `src/App.css` | **Fichier de style principal** — design system complet via CSS variables (`:root`). Tout changement visuel passe ici. |
+| `src/index.css` | Reset minimal + `#root { height: 100dvh }` — non importé dans main.jsx, inactif |
 | `src/components/FavoriteModal.jsx` | Formulaire ajout/modif session (extraction depuis FishingCalendar) |
 | `src/utils/favoriteEntry.js` | `buildFavoriteEntry` + `saveFavoriteSession` — logique de sauvegarde partagée |
 | `src/components/SavedSessions.jsx` | Panneau sessions enregistrées : liste, détail, bouton "✏️ Modifier" |
@@ -49,6 +55,16 @@
 | `src/utils/similarity.js` | `findSimilarDays`, `compareDays`, `SIMILARITY_THRESHOLD` |
 | `.github/workflows/keep-alive.yml` | Cron GitHub Actions (lundi 8h UTC) — ping Supabase pour éviter la mise en pause |
 | `supabase-schema.sql` | Schéma SQL à jour (tables + RLS anon) — **ne contient pas encore** la migration photos |
+
+### Token du design system (src/App.css :root)
+| Token | Valeur | Usage |
+|---|---|---|
+| `--brand` | `#261606` | Header bg, boutons primaires, étoiles |
+| `--bg` | `#fbe311` | Fond global Aureolin |
+| `--surface` / `--bg2` | `#fef08a` | Surfaces secondaires, panneaux |
+| `--card` | `#ffffff` | Cartes, modales, burger menu |
+| `--accent-a` / `--gold` | `#d97706` | Ambre — commentaires, badges |
+| `--success` / `--green` | `#16a34a` | Succès, Supabase badge |
 
 ### Migration photos non committée (à exécuter manuellement dans Supabase SQL Editor si projet recréé)
 ```sql
