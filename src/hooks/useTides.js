@@ -151,6 +151,11 @@ export function useTides(location, apiKey) {
 
       const data = await fetchTides(location.lat, location.lng, apiKey, start, end)
 
+      if (!data || data.length === 0) {
+        setState(s => ({ ...s, loading: false, error: 'Aucune donnée de marée retournée par Stormglass pour cette localisation.' }))
+        return { ok: false, error: 'Aucune donnée retournée' }
+      }
+
       /* 3. Persister (permanent) dans Supabase + localStorage */
       await dbSave(supabase, locKey, mStr, data)
       lsSave(mKey, data)

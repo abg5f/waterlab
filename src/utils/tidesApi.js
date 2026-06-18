@@ -3,12 +3,20 @@ export async function fetchTides(lat, lng, apiKey, start, end) {
   const res = await fetch(url, { headers: { Authorization: apiKey } })
   if (!res.ok) throw new Error(`Stormglass: ${res.status}`)
   const json = await res.json()
+  console.log('[WaterLab] Stormglass response:', { status: res.status, dataCount: json.data?.length, meta: json.meta, errors: json.errors })
   return json.data || []
 }
 
+function localDateStr(date) {
+  const y = date.getFullYear()
+  const m = String(date.getMonth() + 1).padStart(2, '0')
+  const d = String(date.getDate()).padStart(2, '0')
+  return `${y}-${m}-${d}`
+}
+
 export function getTidesForDate(tides, date) {
-  const dateStr = date.toISOString().split('T')[0]
-  return tides.filter(t => t.time.startsWith(dateStr))
+  const target = localDateStr(date)
+  return tides.filter(t => localDateStr(new Date(t.time)) === target)
 }
 
 export function formatTime(isoTime) {
@@ -35,8 +43,8 @@ export function calculateCoefficients(tides) {
 }
 
 export function getCoefficientForDate(coeffs, date) {
-  const dateStr = date.toISOString().split('T')[0]
-  const day = coeffs.filter(c => c.time.startsWith(dateStr))
+  const target = localDateStr(date)
+  const day = coeffs.filter(c => localDateStr(new Date(c.time)) === target)
   if (!day.length) return null
   return Math.max(...day.map(c => c.coeff))
 }
