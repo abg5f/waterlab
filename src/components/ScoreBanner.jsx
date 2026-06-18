@@ -12,7 +12,11 @@ export default function ScoreBanner({ tides, weather, selectedDate }) {
   // Coefficients et seuils (mémoïsés — données astronomiques stables)
   const allCoeffs  = useMemo(() => tides.data ? calculateCoefficients(tides.data) : [], [tides.data])
   const thresholds = useMemo(() => getCoeffThresholds(allCoeffs), [allCoeffs])
-  const coeff      = getCoefficientForDate(allCoeffs, displayDate)
+  const coeff      = useMemo(
+    () => getCoefficientForDate(allCoeffs, displayDate),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [allCoeffs, displayDate.toDateString()]
+  )
 
   // Tendance pression pour la date affichée
   let trend = 0

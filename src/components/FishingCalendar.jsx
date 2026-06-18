@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useCallback } from 'react'
 import StarRating from './StarRating'
 import PhotoGallery from './PhotoGallery'
 import FavoriteModal from './FavoriteModal'
@@ -151,7 +151,7 @@ export default function FishingCalendar({ weather, tides, onDateSelect }) {
   const allCoeffs     = useMemo(() => (tides ? calculateCoefficients(tides) : []), [tides])
   const coeffThresholds = useMemo(() => getCoeffThresholds(allCoeffs), [allCoeffs])
 
-  const getConditions = (dateOrDay) => {
+  const getConditions = useCallback((dateOrDay) => {
     const date = dateOrDay instanceof Date ? dateOrDay : new Date(year, month, dateOrDay)
     const moon     = getMoonData(date)
     const coeff    = getCoefficientForDate(allCoeffs, date)
@@ -172,7 +172,7 @@ export default function FishingCalendar({ weather, tides, onDateSelect }) {
       fishingScore:  getFishingScore(date, trend, coeff, coeffThresholds),
       tides:         dayTides,
     }
-  }
+  }, [year, month, allCoeffs, tides, weather.data, coeffThresholds])
 
   const openModal = (day) => {
     if (!favUnlocked && hasPinStored()) {
