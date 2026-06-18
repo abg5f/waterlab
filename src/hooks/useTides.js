@@ -145,8 +145,8 @@ export function useTides(location, apiKey) {
         }
       }
 
-      /* 2. Pas en base (ou force=true) → appel Stormglass pour le mois entier + mois suivant */
-      const start = new Date(now.getFullYear(), now.getMonth(), 1, 0, 0, 0)
+      /* 2. Pas en base (ou force=true) → appel Stormglass depuis maintenant (free tier : ~10 j) */
+      const start = new Date() // depuis maintenant — le free tier ne retourne que ~10 jours
       const end   = new Date(now.getFullYear(), now.getMonth() + 2, 0, 23, 59, 59) // dernier jour du mois suivant
 
       const data = await fetchTides(location.lat, location.lng, apiKey, start, end)
@@ -220,7 +220,7 @@ export function useTides(location, apiKey) {
       const mStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2,'0')}`
 
       try {
-        const start = new Date(now.getFullYear(), now.getMonth(), 1, 0, 0, 0)
+        const start = new Date() // depuis maintenant — free tier ~10 jours
         const end = new Date(now.getFullYear(), now.getMonth() + 2, 0, 23, 59, 59)
         const data = await fetchTides(location.lat, location.lng, apiKey, start, end)
 
