@@ -1,6 +1,6 @@
 # Context — WaterLab
 
-> Dernière mise à jour : 2026-06-17
+> Dernière mise à jour : 2026-06-23
 
 ## État actuel
 
@@ -27,9 +27,8 @@
 
 ## En cours / TODOs
 
-- Rien en cours — design system Aureolin/Bistre appliqué, app fonctionnelle
+- Rien en cours — app fonctionnelle
 - Piste future : ajouter des sessions favorites pour augmenter le nombre de "Références" dans les jours similaires
-- Piste future : déployer le nouveau design sur Vercel (pas encore pushé/déployé)
 
 ## Problèmes connus
 
@@ -44,6 +43,7 @@
 |---|---|
 | `src/App.css` | **Fichier de style principal** — design system complet via CSS variables (`:root`). Tout changement visuel passe ici. |
 | `src/index.css` | Reset minimal + `#root { height: 100dvh }` — non importé dans main.jsx, inactif |
+| `src/components/BurgerMenu.jsx` | Menu burger — lien Instagram mis à jour vers `@paulphotopeche` |
 | `src/components/FavoriteModal.jsx` | Formulaire ajout/modif session (extraction depuis FishingCalendar) |
 | `src/utils/favoriteEntry.js` | `buildFavoriteEntry` + `saveFavoriteSession` — logique de sauvegarde partagée |
 | `src/components/SavedSessions.jsx` | Panneau sessions enregistrées : liste, détail, bouton "✏️ Modifier" |
